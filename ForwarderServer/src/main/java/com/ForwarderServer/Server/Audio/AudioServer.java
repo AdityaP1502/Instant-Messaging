@@ -1,4 +1,4 @@
-package com.ForwarderServer.Server.Audio;
+package com.ForwarderServer.server.audio;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;

@@ -1,4 +1,4 @@
-package com.ForwarderServer.Server;
+package com.ForwarderServer.server;
 
 public enum CallStatus {
 	INCOMINGCALL(ResponseHeader.INCOMINGCALL), 
