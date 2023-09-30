@@ -14,6 +14,8 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import io.github.cdimascio.dotenv.Dotenv;
+
 public class MessageForwarderServer {
 	// clientTable is the list of user
 	// that are online / connected to the server
@@ -24,21 +26,25 @@ public class MessageForwarderServer {
 	private static final int BUFFER_SIZE = 1048576;
 	private static final char EOF = '\n';
 	private static String SUPER_SECRET_KEY;
+	private static String MODE;
 
 	public static void main(String[] args) throws IOException {
+		String IPaddress;
+		int port;
 		
-		SUPER_SECRET_KEY = System.getenv("FORWARD_SERVER_SUPER_SECRET_KEY");
+		Dotenv dotenv = Dotenv.load();
 		
-		if (SUPER_SECRET_KEY == null)
-		{
-			System.out.println("SUPER SECRET KEY environment variables hasn't been set!");
-			System.exit(-1);
-		}
+		SUPER_SECRET_KEY = dotenv.get("SECRET_KEY");
+		MODE = dotenv.get("MODE");
+		
+		// Network configuration
+		IPaddress = MODE.equals("DEV") ? dotenv.get("IP_R_DEV") : dotenv.get("IP_R_PROD");
+		port = Integer.parseInt(dotenv.get("PORT_R"));
 		
 		Selector selector = Selector.open();
 		ServerSocketChannel serverSocket = ServerSocketChannel.open();
 		
-		serverSocket.bind(new InetSocketAddress("localhost", 8080));
+		serverSocket.bind(new InetSocketAddress(IPaddress, port));
 		serverSocket.configureBlocking(false);
 		serverSocket.register(selector, SelectionKey.OP_ACCEPT);
 
@@ -68,7 +74,7 @@ public class MessageForwarderServer {
 			}
 		}
 	}
-
+	
 	private static void forceCloseConnection(ByteBuffer buffer, SocketChannel client) throws IOException {
 
 		String username = clientIPAddressTable.getOrDefault(client.getRemoteAddress(), null);
