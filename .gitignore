@@ -20,6 +20,7 @@ dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
+**/.metadata/
 
 # python 
 *.pyc
@@ -27,7 +28,6 @@ buildNumber.properties
 # other files
 *.txt
 *.csv
-*env
-
+*.env
 
 

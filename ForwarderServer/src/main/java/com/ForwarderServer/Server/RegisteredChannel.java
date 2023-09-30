@@ -1,4 +1,4 @@
-package com.ForwarderServer.Server;
+package com.ForwarderServer.server;
 
 import java.nio.channels.*;
 import java.time.LocalDateTime;

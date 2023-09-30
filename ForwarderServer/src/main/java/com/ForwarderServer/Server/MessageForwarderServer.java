@@ -1,4 +1,4 @@
-package com.ForwarderServer.Server;
+package com.ForwarderServer.server;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
