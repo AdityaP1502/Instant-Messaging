@@ -1,7 +1,9 @@
 package com.ForwarderServer.server.util;
 
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -50,6 +52,17 @@ public class CryptoHandler {
 		return hex.toString();
 	}
 	
+	public static String[] getSessionToken(String username)
+	{
+		// Append random generated number in hex to username
+		SecureRandom random = new SecureRandom();
+		byte[] values = new byte[32];
+		random.nextBytes(values);
+		String rng = bytesToHexString(values);
+		
+		return new String[] { username + rng, rng };
+	}
+	
 	public static String getAccessToken(String sessionKey, String key) throws InvalidKeyException {
 		/**
 		 * Get access token used to allocate channel in audio server
@@ -69,4 +82,15 @@ public class CryptoHandler {
 		}
 		return "";
 	}
+	
+	public static boolean verifyAccessToken(String username, String salt, String accessToken, String key) throws InvalidKeyException
+	{
+		String sessionToken = username + salt;
+		String expectedToken = getAccessToken(sessionToken, key);
+		byte[] expectedTokenByte = hexStringToByteArray(expectedToken);
+		byte[] sentAccessTokenByte =  hexStringToByteArray(accessToken);
+		
+		return MessageDigest.isEqual(expectedTokenByte, sentAccessTokenByte);
+	}
 }
+	
