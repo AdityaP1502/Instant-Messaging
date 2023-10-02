@@ -42,13 +42,36 @@ public class HmacTest {
 		}
 	}
 	
-	public static void main(String[] args)
+	@Test
+	public static void verifyHmacTest() throws InvalidKeyException
+	{
+		String username = "Aditya";
+		String[] sessionToken = CryptoHandler.getSessionToken(username);
+		String accessToken = CryptoHandler.getAccessToken(sessionToken[0], "AAFFAAFF") + "AA";
+		
+		boolean isTokenEqual = CryptoHandler.verifyAccessToken(username, sessionToken[1], accessToken, "AAFFAAFF");
+		
+		assert !isTokenEqual : "Wrong Equality";
+	}
+	
+	@Test 
+	public static void getSessionTokenTest()
+	{
+		String token = CryptoHandler.getSessionToken("Aditya")[0];
+		System.out.println(token);
+	}
+	
+	public static void main(String[] args) throws InvalidKeyException
 	{
 		hexToBytesTest();
 		System.out.println("Passed");
 		bytesToHexTest();	
 		System.out.println("Passed");
 		hmacTest();
+		System.out.println("Passed");
+		getSessionTokenTest();
+		System.out.println("Passed");
+		verifyHmacTest();
 		System.out.println("Passed");
 	}
 }
