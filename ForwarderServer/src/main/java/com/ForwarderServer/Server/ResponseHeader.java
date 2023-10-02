@@ -5,11 +5,13 @@ public enum ResponseHeader {
 	FETCH("responsetype=FETCH"), 
 	SENDMESSAGE("responsetype=MESSAGE"),
 	INCOMINGCALL("responsetype=INCOMING_CALL"),
+	CHANNELALLOCATION("responsetype=CHANNEL_ALLOCATION"),
 	CALLACCEPTED("responsetype=CALL_ACCEPTED"),
 	CALLDECLINED("responsetype=CALL_DECLINED"), 
 	CALLTIMEOUT("responsetype=CALL_TIMEOUT"), 
 	CALLTERMINATE("responsetype=CALL_TERMINATE"),
 	CALLABORT("responsetype=CALL_ABORT"), 
+	CALLBUSY("responsetype=CALL_BUSY"),
 	SENDAUDIO("responsetype=AUDIO"), 
 	OK("responsetype=OK");
 	
