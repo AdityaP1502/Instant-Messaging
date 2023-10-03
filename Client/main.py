@@ -1,10 +1,10 @@
 import sys
+import os.path
 
 from client import Client
 from connection import Connection
 from receiver import Receiver
 from history_handler import HistoryHandler
-from call_handler import CallHandler
 
 from ui.cli.writer import Writer
 from ui.cli.page.page import PageLoader, UserInputHandler
@@ -13,11 +13,13 @@ from ui.cli.page.chat_room import ChatRoomPage
 from ui.cli.page.call_incoming import IncomingCallPage
 from ui.cli.page.on_call import OnCallPage
 
-
 CHAT_HISTORY_DATA = None
 CALL_INFO = None
-CHAT_HISTORY_DATA_FILEPATH = "./data/history.txt"
+CHAT_HISTORY_DATA_FILEPATH = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "data/history.txt")
 ERR = None
+
+# TODO: Add exception handling to stop any spawned process
+# TODO: Add terminate call when exit the application 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -47,7 +49,6 @@ if __name__ == "__main__":
     
     conn = Connection(ui_handler=writer)
     client = Client(username, buffer=writer.job, conn=conn)
-    call_handler = CallHandler(ui_handler=writer, page_loader=page_loader, client=client)
     
     # # create a writer thread
     # writer_t = Writer(name="writer_thread", args=(client, ), daemon=True)
@@ -55,13 +56,13 @@ if __name__ == "__main__":
         
     # connect and register channel
     try:
-        conn.connect_to_socket(hostname="localhost", port=8080)
+        conn.connect_to_socket(host_ip="127.0.0.1", port=6565)
     except Exception as e:
         print("Cant connect to server!")
         print(e)
         sys.exit(-1)        
         
-    receiver = Receiver(buffer=client.message_buffer, conn=conn, ui_handler=writer, call_handler=call_handler)
+    receiver = Receiver(buffer=client.message_buffer, conn=conn, ui_handler=writer)
     receiver.start()
 
     rc = client.check_in()
@@ -90,17 +91,8 @@ if __name__ == "__main__":
                     rc = UserInputHandler.process_home_input(writer, action, page_loader, pages)
 
                 elif page_loader.current_active_page() == "CHATROOMPAGE":
-                    rc = UserInputHandler.process_chat_input(client, writer, action, call_handler, page_loader, pages)
-                
-                elif page_loader.current_active_page == "CALLPAGE":
-                    rc = UserInputHandler.process_calling_input(action, call_handler)
-                    
-                elif page_loader.current_active_page() == "INCOMINGCALLPAGE":
-                    rc = UserInputHandler.process_incoming_call_input(action, call_handler)
-
-                elif page_loader.current_active_page == "ONCALLPAGE":
-                    rc = UserInputHandler.process_on_call_input(action, call_handler)
-                    
+                    rc = UserInputHandler.process_chat_input(client, writer, action, page_loader, pages)
+                     
         else:
             conn.running = False
             print("Login failed. Please try again!")
@@ -108,7 +100,6 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("CTRL + C is pressed")
         conn.running = False
-        call_handler.mixer.terminate()
         writer.expecting_input = False
         writer.set_err_signal(err=KeyboardInterrupt.__name__, terminate=True)
       
