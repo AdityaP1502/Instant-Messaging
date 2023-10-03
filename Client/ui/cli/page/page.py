@@ -60,7 +60,7 @@ class UserInputHandler():
       return 1
   
   @staticmethod
-  def process_chat_input(client, writer, user_input : str, call_handler, page_loader : PageLoader, pages):
+  def process_chat_input(client, writer, user_input : str, page_loader : PageLoader, pages):
     user_input_parsed = user_input.split(" ", maxsplit=1)
     
     if len(user_input_parsed) != 2:
@@ -88,15 +88,15 @@ class UserInputHandler():
       return 0
     
     elif command.upper() == "CALL":
+      # TODO: Spawned a new process
       recpt_username = page_loader.get_loaded_page().recpt
-      call_handler.initiate_call(username=recpt_username)
     
     else:
       # invalid command
       return 1
   
   @staticmethod
-  def process_calling_input(user_input : str, call_handler):
+  def process_calling_input(user_input : str):
     user_input_parsed = user_input.split(" ", maxsplit=1)
     
     if len(user_input_parsed) != 2:
@@ -105,20 +105,22 @@ class UserInputHandler():
     command, args = user_input_parsed
     
     if command.upper() == "CANCEL":
-      call_handler.set_state(5)
-      
+      return 1
+    
+    return 0
+    
   @staticmethod
-  def process_incoming_call_input(user_input : str, call_handler):
+  def process_incoming_call_input(user_input : str):
     user_input = user_input.upper()
     
     if user_input == "Y":
-      call_handler.set_state(3)
+      return 0
       
     elif user_input == "N":
-      call_handler.set_state(1)
+      return 1
   
   @staticmethod
-  def process_on_call_input(user_input : str, call_handler):
+  def process_on_call_input(user_input : str):
     user_input_parsed = user_input.split(" ", maxsplit=1)
     
     if len(user_input_parsed) != 2:
@@ -127,7 +129,7 @@ class UserInputHandler():
     command, args = user_input_parsed
     
     if command.upper() == "HANG":
-      call_handler.set_state(4)
+      return 1
     
   @staticmethod
   def process_user_input(user_input : str, curr_page, page_loader : PageLoader, history):

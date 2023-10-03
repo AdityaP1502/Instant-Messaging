@@ -8,10 +8,9 @@ from history_handler import HistoryHandler
 
 class Receiver():
     EOF = "\n"
-    def __init__(self, buffer, conn, ui_handler, call_handler, buffer_size=4096):
+    def __init__(self, buffer, conn, ui_handler, buffer_size=4096):
         self._ui_handler = ui_handler
         self._buffer_size = buffer_size
-        self._call_handler = call_handler
         self._conn = conn
         self._t = Thread(target=self.receive, daemon=True)
         self.buffer = buffer
@@ -23,7 +22,6 @@ class Receiver():
         return self._t.join(timeout)
 
     def receive(self):
-        # TODO : Current implementation works but a better message format is needed
         # where the payload size is fixed
         
         while not self._conn.has_registered or self._conn.running:
@@ -191,7 +189,7 @@ class Receiver():
                 data.append(value)
 
             caller, _ = data
-            self._call_handler.start_incoming_call(caller)
+            # TODO: Spawn call process with the correct option
 
         elif restype == "CALL_TIMEOUT":
             parsedResponse = payload.split(";", 2)
