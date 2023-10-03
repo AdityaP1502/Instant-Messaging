@@ -24,6 +24,7 @@ buildNumber.properties
 
 # python 
 *.pyc
+Client/process/doodle/*
 
 # other files
 *.txt
