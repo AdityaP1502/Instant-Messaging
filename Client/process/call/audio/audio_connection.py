@@ -1,11 +1,10 @@
 import socket
 
-class AudioConnection():
-    HOST = "localhost"
-    PORT = 8080
-    
-    def __init__(self) -> None:
+class AudioConnection():    
+    def __init__(self, ip, port) -> None:
         self.socket : socket.socket = None
+        self.ip = ip
+        self.port = port
         
     def connect_to_socket_tcp(self):
         try:
@@ -13,14 +12,11 @@ class AudioConnection():
         except socket.error as err:
             return -1, "socket creation failed with error {}".format(err)
 
-        try:
-            host_ip = socket.gethostbyname("localhost")
-        except socket.error as err:
-            return -1, "There was an error resolving the hostname"
-        
-        self.socket.connect((host_ip, self.PORT))
+
+        self.socket.connect((self.ip, self.port))
         self.socket.bind()
         self.socket.setblocking(0)
+        
         return 0, ""
     
     def connect_to_socket_udp(self):
@@ -29,12 +25,8 @@ class AudioConnection():
         except socket.error as err:
             return -1, "socket creation failed with error {}".format(err)
 
-        try:
-            host_ip = socket.gethostbyname("localhost")
-        except socket.error as err:
-            return -1, "There was an error resolving the hostname"
-        
-        self.socket.connect((host_ip, self.PORT))
+
+        self.socket.connect((self.ip, self.port))
         self.socket.setblocking(0)
         return 0, ""
     

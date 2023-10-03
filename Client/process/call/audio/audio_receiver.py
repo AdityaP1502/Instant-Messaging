@@ -11,12 +11,15 @@ class AudioReceiver():
     START_BUFF_SIZE = 8 
     BUFF_SIZE = 2048 + 8
     
-    def __init__(self, conn, f, logger, client):
+    def __init__(self, conn, f, client, logger = None):
         self._stop = False
         self._t = Thread(target=self.receive)
         self._conn = conn
         self._logger = logger
-        self._logger.register_event(name="UDP Latency")
+        
+        if self._logger != None:
+            self._logger.register_event(name="UDP Latency")
+            
         self.output_f = f
         self.client = client
         
@@ -61,12 +64,19 @@ class AudioReceiver():
                     print("Received Channel : {}".format(struct.unpack(">I", channel_args)[0]))
                     buff_size = self.BUFF_SIZE
                     continue
-                 
+                
+                if channel_int == 0xaaaaaaaa:
+                    # both connection has been established 
+                    # start to send audio data
+                    self.client.set_ready_signal()
+                    
                 frame_id = struct.unpack(">I", frame_id)[0]
                 print("Received : frame - {}".format(frame_id))
                 self.output_f(frame, frame_id)
                 e_time = time()
-                self._logger.emit("UDP Latency", "{} ms".format((e_time - s_time) * 1000))
+                
+                if self._logger:
+                    self._logger.emit("UDP Latency", "{} ms".format((e_time - s_time) * 1000))
                 
             except socket.error as e:
                 err = e.args[0]
