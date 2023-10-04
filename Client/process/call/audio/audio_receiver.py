@@ -13,7 +13,7 @@ class AudioReceiver():
     
     def __init__(self, conn, f, client, logger = None):
         self._stop = False
-        self._t = Thread(target=self.receive)
+        self._t = Thread(target=self.receive, daemon=True)
         self._conn = conn
         self._logger = logger
         
@@ -36,7 +36,11 @@ class AudioReceiver():
             self._t.join(timeout=10)
         except:
             return
-            
+    
+    def terminate(self):
+        self.stop()
+        self._t.join(timeout=1)
+     
     def receive(self):
         data = b""
         buff_size = self.START_BUFF_SIZE
