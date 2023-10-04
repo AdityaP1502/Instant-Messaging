@@ -24,6 +24,9 @@ class Writer():
         self.state = 2
         if terminate:
             self.state = 6
+    
+    def terminate(self):
+        self.state = 2
         
     def __update_page(self):
         # while True:
