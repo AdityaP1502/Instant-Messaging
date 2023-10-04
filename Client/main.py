@@ -5,6 +5,7 @@ from client import Client
 from connection import Connection
 from receiver import Receiver
 from history_handler import HistoryHandler
+from call_handler import CallHandler
 
 from ui.cli.writer import Writer
 from ui.cli.page.page import PageLoader, UserInputHandler
@@ -49,6 +50,7 @@ if __name__ == "__main__":
     
     conn = Connection(ui_handler=writer)
     client = Client(username, buffer=writer.job, conn=conn)
+    call_handler = CallHandler()
     
     # # create a writer thread
     # writer_t = Writer(name="writer_thread", args=(client, ), daemon=True)
@@ -62,7 +64,7 @@ if __name__ == "__main__":
         print(e)
         sys.exit(-1)        
         
-    receiver = Receiver(buffer=client.message_buffer, conn=conn, ui_handler=writer)
+    receiver = Receiver(buffer=client.message_buffer, conn=conn, call_handler=call_handler, ui_handler=writer)
     receiver.start()
 
     rc = client.check_in()
@@ -104,6 +106,9 @@ if __name__ == "__main__":
         writer.set_err_signal(err=KeyboardInterrupt.__name__, terminate=True)
       
     finally:
+        if call_handler.check_process_status():
+            call_handler.force_stop()
+            
         HistoryHandler.write_history_data(CHAT_HISTORY_DATA_FILEPATH, CHAT_HISTORY_DATA)        
                    
     # while (action != "TERMINATE"):
