@@ -40,9 +40,12 @@ class Mixer():
         
         self._buffer.put(None)
         
-        self._player_t.join(timeout=1)
-        self._recorder_t.join(timeout=1)
-        
+        try:
+            self._player_t.join(timeout=1)
+            self._recorder_t.join(timeout=1)
+        except RuntimeError:
+            pass
+            
     def append_audio(self, audio, frame_id):
         with self._expected_frame.get_lock():
             if frame_id >= self._expected_frame.value:
