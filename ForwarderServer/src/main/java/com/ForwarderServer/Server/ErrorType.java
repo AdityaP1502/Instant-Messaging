@@ -1,4 +1,4 @@
-package com.ForwarderServer.Server;
+package com.ForwarderServer.server;
 
 public enum ErrorType {
 	InvalidMessageFormat("Missing Header or Payload"),

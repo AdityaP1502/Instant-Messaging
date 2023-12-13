@@ -21,13 +21,14 @@ dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
+**/.metadata/
 
 # python 
 *.pyc
+Client/process/doodle/*
 
 # other files
 *.txt
 *.csv
-*env
-
+*.env
 
