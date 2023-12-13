@@ -8,6 +8,7 @@
 .classpath
 # VSCode Settings
 .vscode
+.metadata
 
 # maven project
 **/target
@@ -28,6 +29,5 @@ buildNumber.properties
 *.txt
 *.csv
 *env
-
 
 
