@@ -8,7 +8,7 @@ from time import sleep
 
 class ProcessHandler():
     def __init__(self, cmd, shortopts=[], longopts=[]):
-        shortopts = map(lambda x: "=".join(x), shortopts)
+        shortopts = map(lambda x: " ".join(x), shortopts)
         longopts = map(lambda x: "=".join(x) if x[1] != "" else x[0], longopts)
         
         shortopts_str = " ".join(shortopts)
@@ -52,7 +52,8 @@ class ProcessHandler():
             
         finally:
             try:
-                child.terminate()
+                # child.terminate()
+                child.send_signal(signal.CTRL_C_EVENT)
             except psutil.NoSuchProcess:
                 pass
         return
