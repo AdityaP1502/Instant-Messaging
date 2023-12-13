@@ -1,6 +1,5 @@
 import socket
 import errno
-import queue
 from time import sleep
 from time import time
 from threading import Thread
@@ -72,7 +71,19 @@ class AudioReceiver():
                 if channel_int == 0xaaaaaaaa:
                     # both connection has been established 
                     # start to send audio data
-                    self.client.set_ready_signal()
+                    self.client.set_state(1)
+                    continue
+                    
+                # TODO: channel_closed because user declined
+                
+                if channel_int == 0x90000000:
+                    self.client.set_state(-1)
+                    continue
+                    
+                # TODO: channel_closed because user didn't answer
+                if channel_int == 0x90000001:
+                    self.client.set_state(-2)
+                    continue
                     
                 frame_id = struct.unpack(">I", frame_id)[0]
                 print("Received : frame - {}".format(frame_id))
