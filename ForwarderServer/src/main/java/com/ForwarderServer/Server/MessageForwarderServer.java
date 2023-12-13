@@ -1,4 +1,4 @@
-package com.ForwarderServer.Server;
+package com.ForwarderServer.server;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -8,11 +8,14 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.security.InvalidKeyException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+
+import io.github.cdimascio.dotenv.Dotenv;
 
 public class MessageForwarderServer {
 	// clientTable is the list of user
@@ -24,21 +27,26 @@ public class MessageForwarderServer {
 	private static final int BUFFER_SIZE = 1048576;
 	private static final char EOF = '\n';
 	private static String SUPER_SECRET_KEY;
+	private static String MODE;
+	private static Dotenv dotenv;
 
-	public static void main(String[] args) throws IOException {
-		
-		SUPER_SECRET_KEY = System.getenv("FORWARD_SERVER_SUPER_SECRET_KEY");
-		
-		if (SUPER_SECRET_KEY == null)
-		{
-			System.out.println("SUPER SECRET KEY environment variables hasn't been set!");
-			System.exit(-1);
-		}
-		
+	public static void main(String[] args) throws IOException, InvalidKeyException {
+		String IPaddress;
+		int port;
+
+		dotenv = Dotenv.load();
+
+		SUPER_SECRET_KEY = dotenv.get("SECRET_KEY");
+		MODE = dotenv.get("MODE");
+
+		// Network configuration
+		IPaddress = MODE.equals("DEV") ? dotenv.get("IP_R_DEV") : dotenv.get("IP_R_PROD");
+		port = Integer.parseInt(dotenv.get("PORT_R"));
+
 		Selector selector = Selector.open();
 		ServerSocketChannel serverSocket = ServerSocketChannel.open();
-		
-		serverSocket.bind(new InetSocketAddress("localhost", 8080));
+
+		serverSocket.bind(new InetSocketAddress(IPaddress, port));
 		serverSocket.configureBlocking(false);
 		serverSocket.register(selector, SelectionKey.OP_ACCEPT);
 
@@ -77,12 +85,13 @@ public class MessageForwarderServer {
 		if (username != null) {
 			// abort a call connection if in call
 			String currentlyInCallWith = callTable.getOrDefault(username, null);
-
+			
 			if (currentlyInCallWith != null) {
 				SocketChannel otherClient = clientTable.get(currentlyInCallWith).getRegisteredChannel();
+				
 				try {
 					abortCall(buffer, otherClient);
-
+					
 				} catch (Exception e) {
 					// the otherClient also abort the connection abruptly
 					otherClient.close();
@@ -145,7 +154,8 @@ public class MessageForwarderServer {
 	}
 
 	private static String makeResponseMessage(String header, String payload) {
-		return header + ";" + "payload=" + payload;
+		return String.format("%s;payload=%s", header, payload);
+		// return header + ";" + "payload=" + payload;
 	}
 
 	private static void handleError(ByteBuffer buffer, SocketChannel client, ErrorMessage err, String uid, int action)
@@ -203,7 +213,7 @@ public class MessageForwarderServer {
 		return null;
 	}
 
-	private static void processIncomingRequest(ByteBuffer buffer, SelectionKey key) throws IOException {
+	private static void processIncomingRequest(ByteBuffer buffer, SelectionKey key) throws IOException, InvalidKeyException {
 		ErrorMessage err;
 		RequestType req;
 
@@ -218,17 +228,15 @@ public class MessageForwarderServer {
 			forceCloseConnection(buffer, client);
 			return;
 		}
-		
+
 		String clientRequest = new String(buffer.array()).trim();
-		
+
 		if (clientRequest.length() > 100) {
 			System.out.println(client.getRemoteAddress() + " send:" + clientRequest.substring(0, 100));
-		}
-		else
-		{
+		} else {
 			System.out.println(client.getRemoteAddress() + " send:" + clientRequest);
 		}
-		
+
 		// Request format:
 		// reqtype=####;payload=###
 
@@ -283,24 +291,27 @@ public class MessageForwarderServer {
 				sendMessage(buffer, client, parsedPayloadField[1], parsedUIDRequestField[1]);
 				break;
 
-			case SENDAUDIO:
-				sendAudio(buffer, client, parsedPayloadField[1], parsedUIDRequestField[1]);
-				break;
-
 			case INITIATECALL:
-				callHandler(buffer, client, parsedPayloadField[1], CallStatus.INCOMINGCALL, parsedUIDRequestField[1]);
+				// callHandler(buffer, client, parsedPayloadField[1], CallStatus.INCOMINGCALL, parsedUIDRequestField[1]);
+				acceptCallInitiation(buffer, client, parsedPayloadField[1], parsedUIDRequestField[1]);
 				break;
 
 			case ACCEPTCALL:
-				callHandler(buffer, client, parsedPayloadField[1], CallStatus.CALLACCEPTED, parsedUIDRequestField[1]);
+				// callHandler(buffer, client, parsedPayloadField[1], CallStatus.CALLACCEPTED,
+				// parsedUIDRequestField[1]);
+				sendClientCallStatus(buffer, client, parsedPayloadField[1], parsedUIDRequestField[1], ResponseHeader.CALLACCEPTED);
 				break;
 
 			case DECLINECALL:
-				callHandler(buffer, client, parsedPayloadField[1], CallStatus.CALLDECLINED, parsedUIDRequestField[1]);
+				// callHandler(buffer, client, parsedPayloadField[1], CallStatus.CALLDECLINED,
+				// parsedUIDRequestField[1]);
+				sendClientCallStatus(buffer, client, parsedPayloadField[1], parsedUIDRequestField[1], ResponseHeader.CALLDECLINED);
 				break;
 
 			case TIMEOUTCALL:
-				callHandler(buffer, client, parsedPayloadField[1], CallStatus.CALLTIMEOUT, parsedUIDRequestField[1]);
+				// callHandler(buffer, client, parsedPayloadField[1], CallStatus.CALLTIMEOUT,
+				// parsedUIDRequestField[1]);
+				sendClientCallStatus(buffer, client, parsedPayloadField[1], parsedUIDRequestField[1], ResponseHeader.CALLTIMEOUT);
 				break;
 
 			case TERMINATE:
@@ -312,7 +323,8 @@ public class MessageForwarderServer {
 			}
 		} catch (IllegalArgumentException | NullPointerException e) {
 			// send error message
-			handleError(buffer, client, new ErrorMessage(ErrorType.InvalidRequestType, "Received " + parsedRequestField[1]),
+			handleError(buffer, client,
+					new ErrorMessage(ErrorType.InvalidRequestType, "Received " + parsedRequestField[1]),
 					parsedUIDRequestField[1], 0);
 		}
 
@@ -431,46 +443,9 @@ public class MessageForwarderServer {
 		sendOKMessage(buffer, sender, uid);
 	}
 
-	private static void sendAudio(ByteBuffer buffer, SocketChannel sender, String payload, String uid)
-			throws IOException {
+	private static void acceptCallInitiation(ByteBuffer buffer, SocketChannel sender, String payload, String uid)
+			throws IOException, InvalidKeyException, NumberFormatException {
 		ErrorMessage err;
-
-		String[] parsedMessage = payload.split(";", 3);
-		// System.out.println(Arrays.toString(parsedMessage));
-
-		if (parsedMessage.length != 3) {
-			handleError(buffer, sender, new ErrorMessage(ErrorType.InvalidSendMessagePayloadLength,
-					"Expected 3 got " + Integer.toString(parsedMessage.length)), uid, 0);
-			return;
-		}
-
-		String[] senderField = parsedMessage[0].split("=");
-		err = isSenderContentValid(senderField[0], senderField[1], sender);
-		if (!(err == null)) {
-			handleError(buffer, sender, err, uid, 0);
-			return;
-		}
-
-		String[] recipientField = parsedMessage[1].split("=");
-		err = isRecipientContentValid(recipientField[0], recipientField[1]);
-		if (!(err == null)) {
-			handleError(buffer, sender, err, uid, 0);
-			return;
-		}
-		
-		if (clientTable.getOrDefault(recipientField[1], null) == null) {
-			return;
-		}
-		
-		forward(buffer, recipientField[1], payload, ResponseHeader.SENDAUDIO);
-		// sendOKMessage(buffer, sender, uid);
-	}
-
-	private static void callHandler(ByteBuffer buffer, SocketChannel sender, String payload, CallStatus status,
-			String uid) throws IOException {
-		ErrorMessage err;
-
-		ResponseHeader header = status.getHeader();
 
 		String[] parsedMessage = payload.split(";", 2);
 		if (parsedMessage.length != 2) {
@@ -495,47 +470,62 @@ public class MessageForwarderServer {
 
 		String senderUsername = senderField[1];
 		String recipientUsername = recipientField[1];
-		
-		if (clientTable.getOrDefault(recipientField[1], null) == null) {
-			header = ResponseHeader.CALLABORT;
-			// send the response to the recipient
-			forward(buffer, senderField[1], payload, header);
-			sendOKMessage(buffer, sender, uid);		
-		}
-		
-		switch (status) {
-		case INCOMINGCALL:
-			// check if user already in call
-			if (callTable.getOrDefault(recipientUsername, null) != null) {
-				// send an abort message
-				header = ResponseHeader.CALLABORT;
-				break;
-			}
 
-			callTable.put(senderUsername, recipientUsername);
-			callTable.put(recipientUsername, senderUsername);
-
-			break;
-
-		case CALLDECLINED:
-
-		case CALLTIMEOUT:
-
-		case CALLTERMINATE:
-			callTable.remove(senderUsername);
-			callTable.remove(recipientUsername);
-			break;
-
-		default:
-			break;
+		// check if user already in call
+		if (callTable.getOrDefault(recipientUsername, null) != null) {
 		}
 
-		// send the response to the recipient
-		forward(buffer, recipientField[1], payload, header);
+		callTable.put(senderUsername, recipientUsername);
+		callTable.put(recipientUsername, senderUsername);
 
+		String senderPayload = CallPayload.generateChannelAllocPayload(uid, senderUsername, SUPER_SECRET_KEY,
+				dotenv.get("IP_A1_DEV"), Integer.parseInt(dotenv.get("PORT_A1")));
+		
+		String recipientPayload = CallPayload.generateCallRequestPayload("", payload, recipientUsername, SUPER_SECRET_KEY,
+				dotenv.get("IP_A1_DEV"), Integer.parseInt(dotenv.get("PORT_A1")));
+		
+		// Send to the client
+		forward(buffer, senderUsername, senderPayload, ResponseHeader.CHANNELALLOCATION);
+		forward(buffer, recipientUsername, recipientPayload, ResponseHeader.INCOMINGCALL);
+	}
+	
+	private static void sendClientCallStatus(ByteBuffer buffer, SocketChannel sender, String payload, String uid, ResponseHeader header) throws IOException
+	{
+		ErrorMessage err;
+
+		String[] parsedMessage = payload.split(";", 2);
+		if (parsedMessage.length != 2) {
+			handleError(buffer, sender, new ErrorMessage(ErrorType.InvalidInitiateCallPacketFormat,
+					"Expected 2 Field in the packet got " + Integer.toString(parsedMessage.length)), uid, 0);
+			return;
+		}
+
+		String[] senderField = parsedMessage[0].split("=");
+		err = isSenderContentValid(senderField[0], senderField[1], sender);
+		if (!(err == null)) {
+			handleError(buffer, sender, err, uid, 0);
+			return;
+		}
+
+		String[] recipientField = parsedMessage[1].split("=");
+		err = isRecipientContentValid(recipientField[0], recipientField[1]);
+		if (!(err == null)) {
+			handleError(buffer, sender, err, uid, 0);
+			return;
+		}
+		
+		String senderUsername = senderField[1];
+		
+		forward(buffer, senderUsername, "", header);
 		sendOKMessage(buffer, sender, uid);
 	}
-
+	
+	private static void abortCall(ByteBuffer buffer, SocketChannel socket) throws IOException {
+		String payload = "";
+		String response = makeResponseMessage(ResponseHeader.CALLABORT.getHeader(), payload);
+		writeResponseToChannel(buffer, socket, response);
+	}
+	
 	private static void forward(ByteBuffer buffer, String recipientUsername, String payload, ResponseHeader header)
 			throws IOException {
 
@@ -593,13 +583,6 @@ public class MessageForwarderServer {
 		clientIPAddressTable.put(client.getRemoteAddress(), checkInField[1]);
 
 		sendOKMessage(buffer, client, uid);
-	}
-
-	private static void abortCall(ByteBuffer buffer, SocketChannel client) throws IOException {
-		ResponseHeader header = ResponseHeader.CALLABORT;
-		String payload = "uid=-1";
-		String response = makeResponseMessage(header.getHeader(), payload);
-		writeResponseToChannel(buffer, client, response);
 	}
 
 	private static void terminateConnection(ByteBuffer buffer, SocketChannel client, String payload, String uid)

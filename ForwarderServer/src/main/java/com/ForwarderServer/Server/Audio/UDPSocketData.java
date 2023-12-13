@@ -1,4 +1,4 @@
-package com.ForwarderServer.Server.Audio;
+package com.ForwarderServer.server.audio;
 import java.net.SocketAddress;
 
 public class UDPSocketData {

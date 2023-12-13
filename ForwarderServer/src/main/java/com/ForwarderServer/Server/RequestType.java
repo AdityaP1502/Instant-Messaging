@@ -1,4 +1,4 @@
-package com.ForwarderServer.Server;
+package com.ForwarderServer.server;
 
 public enum RequestType {
 	CHECKIN, FETCH, READY, SENDMESSAGE, INITIATECALL, ACCEPTCALL, DECLINECALL, 

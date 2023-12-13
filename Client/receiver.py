@@ -1,17 +1,19 @@
+import os
+import os.path
 import sys
 import socket
 import errno
+
 from time import sleep
 from threading import Thread
 from history_handler import HistoryHandler
-
 
 class Receiver():
     EOF = "\n"
     def __init__(self, buffer, conn, ui_handler, call_handler, buffer_size=4096):
         self._ui_handler = ui_handler
-        self._buffer_size = buffer_size
         self._call_handler = call_handler
+        self._buffer_size = buffer_size
         self._conn = conn
         self._t = Thread(target=self.receive, daemon=True)
         self.buffer = buffer
@@ -23,7 +25,6 @@ class Receiver():
         return self._t.join(timeout)
 
     def receive(self):
-        # TODO : Current implementation works but a better message format is needed
         # where the payload size is fixed
         
         while not self._conn.has_registered or self._conn.running:
@@ -181,17 +182,37 @@ class Receiver():
         #         return
                 
         #     self.call_handler.mixer.append_audio(audio)
-            
-        elif restype == "INCOMING_CALL":
-            parsedResponse = payload.split(";", 2)
+        elif restype == "CHANNEL_ALLOCATION" or restype == "INCOMING_CALL":
+            print(payload)
+            parsedResponse = payload.split(";", 6)
             data = []
 
             for field in parsedResponse:
                 _, value = field.split("=", 1)
                 data.append(value)
+                
+            uid, sender, recipient, token, salt, network_address = data
+            
+            if restype == "CHANNEL_ALLOCATION":
+                try:
+                    uid_integer = int(uid)
+                    self._conn.request_status[uid_integer] = "OK"
+                    self._conn.request_state[uid_integer] = 0 
+                except ValueError:
+                    pass
+            
+            self._call_handler.spawn_process(restype, sender, recipient, token, salt, network_address)
+            
+        # elif restype == "INCOMING_CALL":
+        #     parsedResponse = payload.split(";", 4)
+        #     data = []
 
-            caller, _ = data
-            self._call_handler.start_incoming_call(caller)
+        #     for field in parsedResponse:
+        #         _, value = field.split("=", 1)
+        #         data.append(value)
+
+        #     caller, _ = data
+        #     # TODO: Spawn call process with the correct option
 
         elif restype == "CALL_TIMEOUT":
             parsedResponse = payload.split(";", 2)
@@ -201,7 +222,7 @@ class Receiver():
                 _, value = field.split("=", 1)
                 data.append(value)
 
-            self._call_handler.set_state(1)
+            # self._call_handler.set_state(1)
         
         elif restype == "CALL_DECLINED":
             parsedResponse = payload.split(";", 2)
@@ -211,7 +232,7 @@ class Receiver():
                 _, value = field.split("=", 1)
                 data.append(value)
                 
-            self._call_handler.set_state(2)
+            # self._call_handler.set_state(2)
         
         elif restype == "CALL_ACCEPTED":
             parsedResponse = payload.split(";", 2)
@@ -221,7 +242,7 @@ class Receiver():
                 _, value = field.split("=", 1)
                 data.append(value)
 
-            self._call_handler.set_state(3)
+            # self._call_handler.set_state(3)
             
         elif restype == "CALL_TERMINATE":
             parsedResponse = payload.split(";", 2)
@@ -231,17 +252,28 @@ class Receiver():
                 _, value = field.split("=", 1)
                 data.append(value)
 
-            self._call_handler.set_state(4)
+            # self._call_handler.set_state(4)
             
         elif restype == "CALL_ABORT":
-            parsedResponse = payload.split(";", 2)
-            data = []
+            # parsedResponse = payload.split(";", 2)
+            # data = []
 
-            for field in parsedResponse:
-                _, value = field.split("=", 1)
-                data.append(value)
-
-            self._call_handler.set_state(5)
+            # for field in parsedResponse:
+            #     _, value = field.split("=", 1)
+            #     data.append(value)
+            _, value = payload.split("=", 1)
+            try:
+                uid = int(value)
+                self._conn.request_status[uid] = "ERROR"
+                self._conn.request_state[uid] = 0 
+            except ValueError:
+                pass
+            
+            if self._call_handler.check_process_status():
+              self._call_handler.force_stop()
+            
+            
+            # self._call_handler.set_state(5)
                        
         elif restype == "ERROR":
             error_field, uid_field = payload.split(";", 2)
