@@ -8,6 +8,7 @@
 .classpath
 # VSCode Settings
 .vscode
+.metadata
 
 # maven project
 **/target
@@ -24,10 +25,12 @@ buildNumber.properties
 
 # python 
 *.pyc
+Client/process/doodle/*
 
 # other files
 *.txt
 *.csv
 *.env
 
+local/
 

@@ -72,7 +72,7 @@ class Connection():
 
         return status
 
-    def connect_to_socket(self, hostname: str, port: int):
+    def connect_to_socket(self, host_ip: str, port: int):
         """ Establish a socket connection to the server. 
             Raised a socketerror connection. 
         """
@@ -82,11 +82,6 @@ class Connection():
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         except socket.error as err:
             return -1, "socket creation failed with error {}".format(err)
-
-        try:
-            host_ip = socket.gethostbyname("localhost")
-        except socket.error as err:
-            return -1, "There was an error resolving the hostname"
 
         self.socket.connect((host_ip, port))
         self.socket.setblocking(0)
