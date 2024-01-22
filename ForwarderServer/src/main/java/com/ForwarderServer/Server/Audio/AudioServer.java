@@ -58,8 +58,6 @@ public class AudioServer {
 		waitingForConnection = new HashMap<>();
 		channels = new AudioChannels();
 
-		// TODO: connect to main server
-
 		while (true) {
 			selector.select();
 			Set<SelectionKey> selectedKeys = selector.selectedKeys();
@@ -102,7 +100,10 @@ public class AudioServer {
 
 	private static void processIncomingRequest(SelectionKey key) throws IOException, InvalidKeyException {
 		// TODO: Messages the main server that the client already connected
-
+		
+		int channel;
+		SocketAddress otherClientAddr;
+		
 		ByteBuffer buffer = ByteBuffer.allocate(2048 + 8);
 		long s_time = System.currentTimeMillis();
 		DatagramChannel client = (DatagramChannel) key.channel();
@@ -125,22 +126,35 @@ public class AudioServer {
 			 * length | [69] 256 bit sender username | [101] 8 bit username length | [102] 256 bit recipient
 			 * username
 			 */
-
-			String hmac = new String(Arrays.copyOfRange(message, 4, 4 + 32));
-			String salt = new String(Arrays.copyOfRange(message, 36, 36 + 32));
 			
-			byte senderUsernameLength = message[64];
-			String senderUsername = new String(Arrays.copyOfRange(message, 65, 65 + senderUsernameLength),
+			System.out.println(message.length);
+			
+			byte[] hmac = Arrays.copyOfRange(message, 4, 4 + 32);
+			byte[] salt = Arrays.copyOfRange(message, 36, 36 + 32);
+			
+			String hmacHexString = CryptoHandler.bytesToHexString(hmac);
+			String saltHexString = CryptoHandler.bytesToHexString(salt);
+			
+			System.out.println(hmacHexString);
+			System.out.println(saltHexString);
+			
+			byte senderUsernameLength = message[68];
+			
+			System.out.println(message.length);
+			
+			String senderUsername = new String(Arrays.copyOfRange(message, 69, 69 + senderUsernameLength),
 					StandardCharsets.UTF_8);
 
-			byte recipientUsernameLength = message[69]; // :)))
+			System.out.println(senderUsername);
+			
+			byte recipientUsernameLength = message[101]; 
 
-			String recipientUsername = new String(Arrays.copyOfRange(message, 70, 70 + recipientUsernameLength),
+			String recipientUsername = new String(Arrays.copyOfRange(message, 102, 102 + recipientUsernameLength),
 					StandardCharsets.UTF_8);
 			
 			// Verify Channel Allocation request
-			boolean isVerified = CryptoHandler.verifyAccessToken(senderUsername, salt, hmac, SUPER_SECRET_KEY);
-			
+			boolean isVerified = CryptoHandler.verifyAccessToken(senderUsername, saltHexString, hmacHexString, SUPER_SECRET_KEY);
+			System.out.println(isVerified);
 			if (!isVerified)
 			{
 				// Ignore any unverified packet
@@ -179,16 +193,55 @@ public class AudioServer {
 			buffer.clear();
 
 			break;
-
+		
+		case 0x90000000:
+			// CALL DECLINED
+			channel = readActionInfo(message, 4);
+			otherClientAddr = channels.getChannelAddress(channel);
+			buffer.put(message);
+			buffer.flip();
+			serverSocket.send(buffer, otherClientAddr);
+			buffer.clear();
+			
+			break;
+			
+		case 0xaaaaaaaa:
+			// CALL ACCEPTED
+			channel = readActionInfo(message, 4);
+			otherClientAddr = channels.getChannelAddress(channel);
+			buffer.put(message);
+			buffer.flip();
+			serverSocket.send(buffer, otherClientAddr);
+			buffer.clear();
+			
+			break;
+			
+		case 0x90000001:
+			// CALL TIMEOUT
+			channel = readActionInfo(message, 4);
+			otherClientAddr = channels.getChannelAddress(channel);
+			buffer.put(message);
+			buffer.flip();
+			serverSocket.send(buffer, otherClientAddr);
+			buffer.clear();
+			
+			break;
+			
 		case 0xffffffff:
-			// TERMINATE
-			client.close();
+			channel = readActionInfo(message, 4);
+			otherClientAddr = channels.getChannelAddress(channel);
+			buffer.put(message);
+			buffer.flip();
+			serverSocket.send(buffer, otherClientAddr);
+			buffer.clear();
+			break;
+
 
 		default:
 			// AUDIO PACKET
 
-			int channel = action;
-			SocketAddress otherClientAddr = channels.getChannelAddress(channel);
+			channel = action;
+			otherClientAddr = channels.getChannelAddress(channel);
 
 			if (otherClientAddr == null) {
 				return;
