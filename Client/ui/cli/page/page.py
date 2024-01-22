@@ -88,8 +88,9 @@ class UserInputHandler():
       return 0
     
     elif command.upper() == "CALL":
-      # TODO: Spawned a new process
       recpt_username = page_loader.get_loaded_page().recpt
+      client.init_call(recipient=recpt_username)
+      return 0
     
     else:
       # invalid command
@@ -110,14 +111,18 @@ class UserInputHandler():
     return 0
     
   @staticmethod
-  def process_incoming_call_input(user_input : str):
+  def process_incoming_call_input(aud, user_input : str):
     user_input = user_input.upper()
     
     if user_input == "Y":
-      return 0
+      aud.accept_connection()
+      aud.set_state(1)
       
     elif user_input == "N":
-      return 1
+      aud.declined_connection()
+      aud.set_state(-1)
+      
+    return 0
   
   @staticmethod
   def process_on_call_input(user_input : str):
@@ -130,7 +135,15 @@ class UserInputHandler():
     
     if command.upper() == "HANG":
       return 1
-    
+  
+  @staticmethod
+  def process_declined_input(user_input : str):
+    return 1
+  
+  @staticmethod
+  def process_timeout_input(user_input : str):
+    return 1
+  
   @staticmethod
   def process_user_input(user_input : str, curr_page, page_loader : PageLoader, history):
     NotImplemented
