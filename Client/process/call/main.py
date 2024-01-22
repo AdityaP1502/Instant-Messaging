@@ -71,6 +71,7 @@ def parse_option():
         print("Error : Invalid Argument")
         exit(1)
 
+    print(opts)
     for opt, arg in opts:
         if opt == "-s":
             SENDER_USERNAME = arg
@@ -89,6 +90,7 @@ def parse_option():
                 PORT = int(arg)
                 c += 1
             except ValueError:
+                print("Error: Invalid Port number. Exiting...")
                 sys.exit(1)
 
         if opt == "--network":
@@ -103,7 +105,7 @@ def parse_option():
 
                 c += 2
             except Exception as e:
-                traceback.print_exc()
+                traceback.print_exc(e)
                 sys.exit(1)
 
         if opt == "--sender":
@@ -111,7 +113,8 @@ def parse_option():
                 SENDER_USERNAME = arg
                 c += 1
                 continue
-
+            
+            print("Error: Assigning sender twice. Exiting...")
             sys.exit(2)
 
         if opt == "--recipient":
@@ -119,7 +122,8 @@ def parse_option():
                 RECIPIENT_USERNAME = arg
                 c += 1
                 continue
-
+            
+            print("Error: Assigning recipient twice. Exiting...")
             sys.exit(2)
 
         if opt == "--token":
@@ -128,6 +132,7 @@ def parse_option():
                 ACCESS_TOKEN = bytes.fromhex(arg)
                 c += 1
             except:
+                print("Error: Cannot decode token. Exiting...")
                 sys.exit(4)
 
         if opt == "--salt":
@@ -136,10 +141,12 @@ def parse_option():
                 SALT = bytes.fromhex(arg)
                 c += 1
             except:
+                print("Error: Cannot decode salt. Exiting...")
                 sys.exit(4)
 
         if opt == "--caller":
             if MODE != None:
+                print("Error: Assigning mode option twice. Exiting...")
                 sys.exit(2)
 
             MODE = 0
@@ -147,12 +154,14 @@ def parse_option():
 
         if opt == "--receiver":
             if MODE != None:
+                print("Error: Assigning mode option twice. Exiting...")
                 sys.exit(2)
 
             MODE = 1
             c += 1
 
     if c != 7:
+        print("Error: Invalid number of options. Exiting...")
         sys.exit(3)
 
 class Updater():
@@ -160,7 +169,7 @@ class Updater():
         self._writer = writer
         self._client = aud
         self._stop = False
-        self._thread = Thread(target=self.run, daemon=True)
+        self._thread = Thread(target=self.run)
         
     def run(self):
         while (not self._stop) and self._client.get_state() >= 0:
@@ -185,7 +194,7 @@ class Watcher():
         self._timeout_s = 30 + 100 if mode == 0 else 30 # 30 seconds + 100 seconds grace period 
         self._stop = False
         self._timeout = False
-        self._thread = Thread(target=self.watch_connection_state, daemon=True)
+        self._thread = Thread(target=self.watch_connection_state)
         self._ui_handler = writer
         
     def start(self):
@@ -199,10 +208,10 @@ class Watcher():
         if self.aud.get_state() != 0 or self._stop:
             return
         
-        if self._ui_handler != None:
-            self._ui_handler.pause()
+        # if self._ui_handler != None:
+        #     self._ui_handler.pause()
             
-        print("Reach Timeout!...")
+        # print("Reach Timeout!...")
         self._timeout = True
         
         self.aud.set_state(-2)
@@ -215,8 +224,8 @@ class Watcher():
         timeout = TimeoutPage(username=RECIPIENT_USERNAME, mode=self.mode)
         self.pg.load_new_page(timeout)
         
-        if self._ui_handler != None:
-            self._ui_handler.un_pause()
+        # if self._ui_handler != None:
+        #     self._ui_handler.un_pause()
             
     def watch_connection_state(self):
         timer = Timer(self._timeout_s, self.timeout_handler)
@@ -239,12 +248,12 @@ class Watcher():
             # load call declined page
             declined = DeclinedPage(username=RECIPIENT_USERNAME, mode=self.mode)
             self.pg.load_new_page(declined)
-            return 
+            return
         
         elif self.aud.get_state() == -2:
             timeout = TimeoutPage(username=RECIPIENT_USERNAME, mode=self.mode)
             self.pg.load_new_page(timeout)
-            return 
+            return
         
         
         print("Opening mic and player!")
@@ -273,7 +282,7 @@ if __name__ == "__main__":
         page_loader = PageLoader(on_call_page)
 
     elif MODE == 1:
-        incoming_call_page = IncomingCallPage(SENDER_USERNAME)
+        incoming_call_page = IncomingCallPage(RECIPIENT_USERNAME)
         page_loader = PageLoader(incoming_call_page)
         
     conn = AudioConnection(ip=IP_ADDERSS, port=PORT)
@@ -296,9 +305,6 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, functools.partial(
         sigterm_handler, [mixer, writer, watcher, rec, updater]))
     
-    signal.signal(signal.CTRL_C_EVENT, functools.partial(
-        sigint_handler, [mixer, writer, watcher, rec, updater]))
-
     # start connection
     ret, _ = conn.connect_to_socket_udp()
     if ret != 0:
@@ -311,7 +317,7 @@ if __name__ == "__main__":
     while not aud.is_channel_set():
         continue
     
-    writer.start() 
+    writer.start()
     updater.start()
     watcher.start()
     
