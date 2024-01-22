@@ -22,8 +22,8 @@ class AudioReceiver():
         self.output_f = f
         self.client = client
         
-    def get(self):
-        return self._q.get()
+    # def get(self):
+    #     return self._q.get()
             
     def start(self):
         self._stop = False 

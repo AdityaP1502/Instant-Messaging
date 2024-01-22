@@ -42,7 +42,19 @@ class AudioClient():
     def register_channel(self):
         packet = b"\x8f\xff\xff\xff" + self._token + self._salt + self._sdr_b + self._rcpt_b
         print("Sending {}".format(packet))
-        assert len(packet) == self.REGISTER_PACKET_SIZE_B, "Packet length must be 102 bytes, received {}".format(len(packet))
+        assert len(packet) == self.REGISTER_PACKET_SIZE_B, "Packet length must be 134 bytes, received {}".format(len(packet))
+        self._conn.send(packet)
+    
+    def declined_connection(self):
+        packet = b"\x90\x00\x00\x00" + self._channel
+        self._conn.send(packet)
+    
+    def accept_connection(self):
+        packet = b"\xaa\xaa\xaa\xaa" + self._channel
+        self._conn.send(packet)
+        
+    def connection_timeout(self):
+        packet = b"\x90\x00\x00\x01" + self._channel
         self._conn.send(packet)
     
     def declined_connection(self):

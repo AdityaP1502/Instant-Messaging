@@ -101,11 +101,12 @@ if __name__ == "__main__":
            
     except KeyboardInterrupt:
         print("CTRL + C is pressed")
+      
+    finally:
         conn.running = False
         writer.expecting_input = False
         writer.set_err_signal(err=KeyboardInterrupt.__name__, terminate=True)
-      
-    finally:
+        
         if call_handler.check_process_status():
             call_handler.force_stop()
             

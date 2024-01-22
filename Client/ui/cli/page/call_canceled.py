@@ -1,4 +1,4 @@
-class CallCanceled():
+class CallCanceledPage():
   def __init__(self, username, mode) -> None:
     self.username = username
     self.mode = mode

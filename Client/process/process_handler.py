@@ -52,8 +52,8 @@ class ProcessHandler():
             
         finally:
             try:
-                # child.terminate()
-                child.send_signal(signal.CTRL_C_EVENT)
+                child.terminate()
+                # child.send_signal(signal.CTRL_C_EVENT)
             except psutil.NoSuchProcess:
                 pass
         return
