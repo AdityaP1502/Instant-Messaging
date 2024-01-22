@@ -12,7 +12,7 @@ class AudioReceiver():
     
     def __init__(self, conn, f, client, logger = None):
         self._stop = False
-        self._t = Thread(target=self.receive, daemon=True)
+        self._t = Thread(target=self.receive)
         self._conn = conn
         self._logger = logger
         
@@ -22,8 +22,8 @@ class AudioReceiver():
         self.output_f = f
         self.client = client
         
-    def get(self):
-        return self._q.get()
+    # def get(self):
+    #     return self._q.get()
             
     def start(self):
         self._stop = False 
