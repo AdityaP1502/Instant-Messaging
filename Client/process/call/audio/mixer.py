@@ -6,9 +6,10 @@ import traceback
 from threading import Thread
 from multiprocessing import Value
 from time import time
+from pyogg import OpusEncoder, OpusBufferedEncoder, OpusDecoder
 
 class Mixer():
-    def __init__(self, send, logger=None) -> None:
+    def __init__(self, send, logger=None, enable_dev_features=False) -> None:
         self._recorder_t = Thread(target=self.record)
         self._player_t = Thread(target=self.play)
         self._stream_p : pyaudio._Stream = None
@@ -24,6 +25,18 @@ class Mixer():
         self._expected_frame = Value("i")
         self.running = False
         
+        if enable_dev_features:
+            self._opus_rate = 48000
+            self._opus_encoder = OpusBufferedEncoder()
+            self._opus_encoder.set_application("audio")
+            self._opus_encoder.set_sampling_frequency(self._opus_rate)
+            self._opus_encoder.set_channels(self._channels)
+            self._opus_encoder.set_frame_size(20) # milliseconds
+
+            self._opus_decoder = OpusDecoder()
+            self._opus_decoder.set_channels(self._channels)
+            self._opus_decoder.set_sampling_frequency(self._opus_rate)
+            
         self._logger = logger
         if logger != None:
             self._logger.register_event(name="Recorder Latency")
@@ -72,6 +85,20 @@ class Mixer():
             try:
                 s_time = time()
                 data = self._stream_r.read(self._chunk)
+                
+                if self._opus_encoder != None:
+                    encoded_packets = self._opus_encoder.buffered_encode(
+                        memoryview(bytearray(data)),
+                    )
+                
+                    for encoded_packet, _, _ in encoded_packets:
+                        # decoded_pcm = opus_decoder.decode(encoded_packet)
+                        # Send the audio data to the receiver
+                        self._send(encoded_packet, struct.pack(">I", frame_id))
+                        frame_id += 1
+                        
+                    continue
+                
                 self._send(data, struct.pack(">I", frame_id))
                 frame_id += 1
                 e_time = time()
@@ -107,6 +134,9 @@ class Mixer():
                 self._logger.emit("Player Fetch Latency", "{} ms".format((e_time - s_time) * 1000))
             
             try:
+                if self._opus_decoder != None:
+                    audio = bytes(self._opus_decoder.decode(memoryview(bytearray(audio))))
+                    
                 self._stream_p.write(audio, self._chunk)
             except:
                 self.terminate()

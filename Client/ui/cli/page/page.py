@@ -88,6 +88,7 @@ class UserInputHandler():
       return 0
     
     elif command.upper() == "CALL":
+      # TODO: Spawned a new process
       recpt_username = page_loader.get_loaded_page().recpt
       client.init_call(recipient=recpt_username)
       return 0
