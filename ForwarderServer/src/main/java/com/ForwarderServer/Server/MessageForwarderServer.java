@@ -478,7 +478,7 @@ public class MessageForwarderServer {
 		callTable.put(senderUsername, recipientUsername);
 		callTable.put(recipientUsername, senderUsername);
 
-		String senderPayload = CallPayload.generateChannelAllocPayload(uid, senderUsername, SUPER_SECRET_KEY,
+		String senderPayload = CallPayload.generateCallRequestPayload(uid, payload, senderUsername, SUPER_SECRET_KEY,
 				dotenv.get("IP_A1_DEV"), Integer.parseInt(dotenv.get("PORT_A1")));
 		
 		String recipientPayload = CallPayload.generateCallRequestPayload("", payload, recipientUsername, SUPER_SECRET_KEY,
