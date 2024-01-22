@@ -62,19 +62,15 @@ class AudioClient():
         self._conn.send(packet)
     
     def accept_connection(self):
-        packet = b"\x90\x00\x00\x02" + self._channel
+        packet = b"\xaa\xaa\xaa\xaa" + self._channel
         self._conn.send(packet)
-        
-    def connection_timeout(self):
-        packet = b"\x90\x00\x00\x01" + self._channel
-        self._conn.send(packet)
-    
+          
     def terminate_channel(self):
         packet = b"\xff\xff\xff\xff" + self._channel
         self._conn.send(packet)
         
     def send_audio(self, audio_data : bytes, frame_id : bytes):
-        assert len(audio_data) == 2048, "Audio data must be 2048 bytes long (1024 chunks with 16 bit integer). Received {}".format(len(audio_data))
+        # assert len(audio_data) == 2048, "Audio data must be 2048 bytes long (1024 chunks with 16 bit integer). Received {}".format(len(audio_data))
         
         packet = self._channel + frame_id + audio_data
         print("Sending {} bytes to server".format(len(packet)))
