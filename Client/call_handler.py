@@ -11,16 +11,17 @@ class CallHandler():
     def spawn_process(self, restype, sender, recipient, token, salt, network_address):
         if restype != "CHANNEL_ALLOCATION":
             sender, recipient = recipient, sender
-            
+        
+        print(sender, recipient)
         shortopts = [
-                ["-s", sender], 
-                ["-r", recipient], 
+                ["-s", sender],
+                ["-r", recipient],
             ]
             
         longopts = [
-            ["--token", token], 
-            ["--salt", salt], 
-            ["--network", network_address], 
+            ["--token", token],
+            ["--salt", salt],
+            ["--network", network_address],
         ]
             
         longopts.append(["--caller", ""] if restype == "CHANNEL_ALLOCATION" else ["--receiver", ""])
