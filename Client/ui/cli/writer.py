@@ -6,7 +6,7 @@ class Writer():
         self.state = 0
         self.page_loader = page_loader        
         self.job = Queue(maxsize=10)
-        self.__thread = Thread(target=self.__update_page, daemon=True)
+        self.__thread = Thread(target=self.__update_page)
         self.err = None
         self.expecting_input = False
         
@@ -44,8 +44,8 @@ class Writer():
             # state = 0  : There is a signal to update
             # state = 1  : No signal to update, only takes job
             # state = -1 : err signal is raised
-            if self.state > 1:
-                print("Error Occured")
+            if self.state > 2:
+                print("Exception is raised")
                 print(self.err)
 
                 if self.state == 6:
@@ -53,7 +53,10 @@ class Writer():
                         print("Press ENTER to Exit!")
                         
                     break
-                    
+            
+            if self.state == 2:
+                break
+            
             if self.state == 0:
                 self.page_loader.update()
                 self.state = 1
@@ -69,7 +72,8 @@ class Writer():
                     entry.append([sender, timestamp, message])
                     
                 self.page_loader.update()
-                
+        
+        print("Writer Thread stopped gracefully")                
                 
                     
                 
