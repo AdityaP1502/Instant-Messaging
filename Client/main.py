@@ -7,12 +7,10 @@ from receiver import Receiver
 from history_handler import HistoryHandler
 from call_handler import CallHandler
 
-from ui.cli.writer import Writer
-from ui.cli.page.page import PageLoader, UserInputHandler
+from ui.cli.controller.writer import Writer
+from ui.cli.controller.page import PageLoader, UserInputHandler
 from ui.cli.page.home import HomePage
 from ui.cli.page.chat_room import ChatRoomPage
-from ui.cli.page.call_incoming import IncomingCallPage
-from ui.cli.page.on_call import OnCallPage
 
 CHAT_HISTORY_DATA = None
 CALL_INFO = None
