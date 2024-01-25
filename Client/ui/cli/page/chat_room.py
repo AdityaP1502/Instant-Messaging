@@ -13,29 +13,30 @@ class ChatRoomPage(BasePage):
 
   def __from_history_to_text_box(self, history):
     sender, timestamp, message = history
-    box = ""
     lpad = ""
     
     if sender == "you":
       lpad = " " * 60
     
     t = dateutil.parser.isoparse(timestamp).strftime('%m/%d %H:%M')
-    box += "{}{} {}\n".format(lpad, t, sender)
+    box = ["{}{} {}".format(lpad, t, sender)]
     _ = ceil(len(message)/40)
       
     for i in range(_):
-      box += "{}{}\n".format(lpad, message[40 * i:min(40 * (i + 1), len(message))])
+      box.append("{}{}".format(lpad, message[40 * i:min(40 * (i + 1), len(message))]))
     
     return box
       
+  def get_header(self):
+    return "You are currently messaging {}".format(self.recpt)
+
   def get_content(self) -> str:
-    header = "You are currently messaging {}\n".format(self.recpt)
-    content = ""
+    content = []
     
     for history in self.history:
       content += self.__from_history_to_text_box(history)
       
-    return header + content
+    return content
   
   def get_prompt(self) -> str:
     return "What message do you want to send:"  

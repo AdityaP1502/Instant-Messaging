@@ -6,13 +6,16 @@ class TimeoutPage(BasePage):
     
   def get_content(self):
     if self.mode == 0:
-      return f"Your call with {self.username} has been terminated because of the user didn't pick up"
+      return [f"Your call with {self.username} has been terminated because of the user didn't pick up"]
     
-    return f"Your call with {self.username} has been terminated because of inactivity"
+    return [f"Your call with {self.username} has been terminated because of inactivity"]
   
   def get_prompt(self):
     return "Press ENTER to exit"
   
+  def get_header(self):
+    return ""
+
   def handle_input(self, *, user_input='', **kwargs) -> int:
     return 1
 

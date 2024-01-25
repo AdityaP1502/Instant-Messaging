@@ -11,8 +11,11 @@ class CallPage(BasePage):
     self.ctr += 1
     self.ctr = self.ctr % 3
     
-    return content
+    return [content]
 
+  def get_header(self):
+    return ""
+  
   def get_prompt(self) -> str:
     prompt = "Do you want to cancel calling {}".format(self.username)
     return prompt

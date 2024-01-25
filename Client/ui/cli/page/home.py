@@ -4,16 +4,20 @@ class HomePage(BasePage):
     self.data = data
     self.username = username
   
-  def get_content(self) -> str:
-    content = "{}, welcome to Aditya Messenger\nChat:\n".format(self.username)
+  def get_content(self) -> list[str]:
+    content = []
 
     # get all chat recent data 
     # do something with data
     for (username, chat_history) in self.data.items():
-      content += "{}\n{} : {}\n".format(username, chat_history[-1][0], chat_history[-1][2])
-      
+      content.append("{}".format(username))
+      content.append("{} : {}".format(chat_history[-1][0], chat_history[-1][2]))
+
     return content
 
+  def get_header(self):
+    return "{}, this is your chat:".format(self.username)
+  
   def get_prompt(self) -> str:
     prompt = "Who do you want to chat:"
     return prompt
