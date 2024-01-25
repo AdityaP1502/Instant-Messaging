@@ -24,18 +24,18 @@ class IncomingCallPage(BasePage):
 #   def get_page(self) -> str:
 #     return self.__get_content() + '\n' + self.__get_prompt()
 
-  def handle_input(self, *, user_input='', audio_client=None, **kwargs) -> int:
-    if audio_client is None:
+  def handle_input(self, *, user_input='', client=None, **kwargs) -> int:
+    if client is None:
       return 1
     
     user_input = user_input.upper()
     
     if user_input == "Y":
-      audio_client.accept_connection()
-      audio_client.set_state(1)
+      client.accept_connection()
+      client.set_state(1)
       
     elif user_input == "N":
-      audio_client.declined_connection()
-      audio_client.set_state(-1)
+      client.declined_connection()
+      client.set_state(-1)
     
   
