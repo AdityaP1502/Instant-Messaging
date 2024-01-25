@@ -2,11 +2,15 @@ from abc import ABC, abstractmethod
 
 class BasePage(ABC):
     @abstractmethod
-    def get_content(self):
+    def get_content(self) -> list[str]:
         pass
     
     @abstractmethod
-    def get_prompt(self):
+    def get_prompt(self) -> str:
+        pass
+    
+    @abstractmethod
+    def get_header(self) -> str:
         pass
     
     @abstractmethod
