@@ -305,7 +305,7 @@ if __name__ == "__main__":
                         rcpt_username=RECIPIENT_USERNAME, token=ACCESS_TOKEN, salt=SALT)
         
         ## Init thread class     
-        mixer = Mixer(send=aud.send_audio)
+        mixer = Mixer(send=aud.send_audio, enable_dev_features=True)
         
         writer = Writer(page_loader=page_loader)
         

@@ -19,6 +19,9 @@ CALL_INFO = None
 ERR = None
 CHAT_HISTORY_DATA_FILEPATH = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "data/history.txt")
 
+# TODO: Add exception handling to stop any spawned process
+# TODO: Add terminate call when exit the application 
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Please specified the username!")
