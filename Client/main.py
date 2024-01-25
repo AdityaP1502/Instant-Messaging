@@ -1,5 +1,6 @@
 import sys
 import os.path
+import curses
 
 from client import Client
 from connection import Connection
@@ -7,17 +8,16 @@ from receiver import Receiver
 from history_handler import HistoryHandler
 from call_handler import CallHandler
 
-from ui.cli.writer import Writer
-from ui.cli.page.page import PageLoader, UserInputHandler
+from ui.cli.controller.writer import Writer
+from ui.cli.controller.page import ScreenHandler
+from ui.cli.controller.keyboard.shortcut_handler import ShortcutHandler
 from ui.cli.page.home import HomePage
 from ui.cli.page.chat_room import ChatRoomPage
-from ui.cli.page.call_incoming import IncomingCallPage
-from ui.cli.page.on_call import OnCallPage
 
 CHAT_HISTORY_DATA = None
 CALL_INFO = None
-CHAT_HISTORY_DATA_FILEPATH = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "data/history.txt")
 ERR = None
+CHAT_HISTORY_DATA_FILEPATH = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "data/history.txt")
 
 # TODO: Add exception handling to stop any spawned process
 # TODO: Add terminate call when exit the application 
@@ -28,6 +28,8 @@ if __name__ == "__main__":
         print("Usage python main.py [username]")
         sys.exit(-1)
     
+    scr = curses.initscr()
+    curses.raw()
     username = sys.argv[1]
 
     # read history data
@@ -42,11 +44,11 @@ if __name__ == "__main__":
     pages = [home_page, chat_room_page] # list of pages
     
     # initiate page loader with home page
-    
-    page_loader = PageLoader(home_page)
+    shortcut_handler = ShortcutHandler()
+    screen_handler = ScreenHandler(home_page, shortcut_handler)
     
     # create a writer
-    writer = Writer(page_loader=page_loader)
+    writer = Writer(page_loader=screen_handler)
     
     conn = Connection(ui_handler=writer)
     client = Client(username, buffer=writer.job, conn=conn)
@@ -82,66 +84,47 @@ if __name__ == "__main__":
     try:
         if rc == 0:
             writer.start()
+            writer.update()
             writer.expecting_input = True
             while rc != 1:
-                action = input("")  
+                # action = input("")  
+                action = screen_handler.input()
                 
                 if not conn.running:
                     break
                 
-                if page_loader.current_active_page() == "HOMEPAGE":
-                    rc = UserInputHandler.process_home_input(writer, action, page_loader, pages)
-
-                elif page_loader.current_active_page() == "CHATROOMPAGE":
-                    rc = UserInputHandler.process_chat_input(client, writer, action, page_loader, pages)
+                rc = screen_handler.get_loaded_page().handle_input(
+                    user_input = action,
+                    writer= writer,
+                    page_loader=screen_handler,
+                    pages=pages,
+                    client=client
+                )
                      
         else:
             conn.running = False
             print("Login failed. Please try again!")
            
-    except KeyboardInterrupt:
-        print("CTRL + C is pressed")
-      
+    # except KeyboardInterrupt:
+    #     print("CTRL + C is pressed")
+    #     writer.set_err_signal(err=type(KeyboardInterrupt).__name__, terminate=True)
+    
+    except Exception as e:
+        print(e)
+        writer.set_err_signal(err=type(e).__name__, terminate=True)
+        
     finally:
+        curses.nocbreak()
+        scr.keypad(False)
+        curses.echo()
+        curses.endwin()
+        curses.noraw()
+        
         conn.running = False
         writer.expecting_input = False
-        writer.set_err_signal(err=KeyboardInterrupt.__name__, terminate=True)
         
+        writer.terminate()
         if call_handler.check_process_status():
             call_handler.force_stop()
             
         HistoryHandler.write_history_data(CHAT_HISTORY_DATA_FILEPATH, CHAT_HISTORY_DATA)        
-                   
-    # while (action != "TERMINATE"):
-    #     client.state.value = 0
-    #     sys.stdout.write("\rinput action:")
-    #     action = input("").upper()
-
-    #     if not conn.running:
-    #         break
-
-    #     if action == "SENDMESSAGE":
-    #         client.state.value = 1
-    #         sys.stdout.write("\rrecipient:")
-    #         recipient = input("")
-
-    #         if not conn.running:
-    #             break
-
-    #         client.state.value = 2
-    #         sys.stdout.write("\rmessage:")
-    #         message = input("")
-
-    #         if not conn.running:
-    #             break
-
-    #         client.send_message(recipient=recipient,
-    #                             message=message,
-    #                             conn=conn)
-
-    #     elif action == "TERMINATE":
-    #         print("Terminating connection!")
-
-    #     else:
-    #         print("Wrong action")
-    #         continue

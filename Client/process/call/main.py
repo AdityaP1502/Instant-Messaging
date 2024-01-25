@@ -6,6 +6,7 @@ import getopt
 import os
 import os.path
 import functools
+import curses
 
 from sys import argv
 from time import sleep
@@ -20,13 +21,13 @@ from audio.audio_receiver import AudioReceiver
 from audio.audio_connection import AudioConnection
 from audio.audio_client import AudioClient
 
-from ui.cli.page.page import PageLoader, UserInputHandler
+from ui.cli.controller.page import ScreenHandler, ShortcutHandler
 from ui.cli.page.calling import CallPage
 from ui.cli.page.call_incoming import IncomingCallPage
 from ui.cli.page.on_call import OnCallPage
 from ui.cli.page.call_declined import DeclinedPage
 from ui.cli.page.call_timeout import TimeoutPage
-from ui.cli.writer import Writer
+from ui.cli.controller.writer import Writer
 
 
 
@@ -186,7 +187,7 @@ class Updater():
         self._thread.join()
     
 class Watcher():
-    def __init__(self, aud: AudioClient, mixer: Mixer, page_loader: PageLoader, mode : int, writer : Writer = None) -> None:
+    def __init__(self, aud: AudioClient, mixer: Mixer, page_loader: ScreenHandler, mode : int, writer : Writer = None) -> None:
         self.aud = aud
         self.mix = mixer
         self.pg = page_loader
@@ -271,83 +272,98 @@ class Watcher():
         return
          
 if __name__ == "__main__":
-    parse_option()
-    
-    print(SENDER_USERNAME, RECIPIENT_USERNAME,
-          IP_ADDERSS, PORT, ACCESS_TOKEN, MODE)
-    
-    # Initialize Object
-    if MODE == 0:
-        on_call_page = CallPage(RECIPIENT_USERNAME)
-        page_loader = PageLoader(on_call_page)
-
-    elif MODE == 1:
-        incoming_call_page = IncomingCallPage(RECIPIENT_USERNAME)
-        page_loader = PageLoader(incoming_call_page)
+    try:
+        scr = curses.initscr()
+        curses.raw()
+        curses.curs_set(0)
         
-    conn = AudioConnection(ip=IP_ADDERSS, port=PORT)
-    
-    aud = AudioClient(username=SENDER_USERNAME, conn=conn,
-                      rcpt_username=RECIPIENT_USERNAME, token=ACCESS_TOKEN, salt=SALT)
-    
-    ## Init thread class     
-    mixer = Mixer(send=aud.send_audio, enable_dev_features=True)
-    
-    writer = Writer(page_loader=page_loader)
-    
-    watcher = Watcher(aud, mixer, page_loader, MODE, writer=writer)
-    
-    rec = AudioReceiver(conn=conn, f=mixer.append_audio, client=aud)
-    
-    updater = Updater(writer=writer, aud=aud)
-    
-    # Init signal watcher for sigterm to terminate used thread
-    signal.signal(signal.SIGTERM, functools.partial(
-        sigterm_handler, [mixer, writer, watcher, rec, updater]))
-    
-    # start connection
-    ret, _ = conn.connect_to_socket_udp()
-    if ret != 0:
-        print(_)
-        sys.exit(1)
-    
-    rec.start()
-    aud.register_channel()
-    
-    while not aud.is_channel_set():
-        continue
-    
-    writer.start()
-    updater.start()
-    watcher.start()
-    
-    rc = 0
-    
-    while rc == 0:
-        action = input()
-
-        # Do some stuff here
+        parse_option()
         
-        if page_loader.current_active_page() == "ONCALLPAGE":
-            rc = UserInputHandler.process_on_call_input(action)
+        print(SENDER_USERNAME, RECIPIENT_USERNAME,
+            IP_ADDERSS, PORT, ACCESS_TOKEN, MODE)
+        
+        # Initialize Object
+        shortcut_handler = ShortcutHandler()
+        
+        if MODE == 0:
+            on_call_page = CallPage(RECIPIENT_USERNAME)
+            page_loader = ScreenHandler(
+                page=on_call_page,
+                shortcut_handler=shortcut_handler
+            )
 
-        elif page_loader.current_active_page() == "INCOMINGCALLPAGE":
-            rc = UserInputHandler.process_incoming_call_input(aud, action)
+        elif MODE == 1:
+            incoming_call_page = IncomingCallPage(RECIPIENT_USERNAME)
+            page_loader = ScreenHandler(
+                page=incoming_call_page,
+                shortcut_handler=shortcut_handler
+            )
+        
+        conn = AudioConnection(ip=IP_ADDERSS, port=PORT)
+        
+        aud = AudioClient(username=SENDER_USERNAME, conn=conn,
+                        rcpt_username=RECIPIENT_USERNAME, token=ACCESS_TOKEN, salt=SALT)
+        
+        ## Init thread class     
+        mixer = Mixer(send=aud.send_audio, enable_dev_features=True)
+        
+        writer = Writer(page_loader=page_loader)
+        
+        watcher = Watcher(aud, mixer, page_loader, MODE, writer=writer)
+        
+        rec = AudioReceiver(conn=conn, f=mixer.append_audio, client=aud)
+        
+        updater = Updater(writer=writer, aud=aud)
+        
+        # Init signal watcher for sigterm to terminate used thread
+        signal.signal(signal.SIGTERM, functools.partial(
+            sigterm_handler, [mixer, writer, watcher, rec, updater]))
+        
+        # start connection
+        ret, _ = conn.connect_to_socket_udp()
+        if ret != 0:
+            print(_)
+            sys.exit(1)
+        
+        rec.start()
+        aud.register_channel()
+        
+        while not aud.is_channel_set():
+            continue
+        
+        writer.start()
+        updater.start()
+        watcher.start()
+        
+        rc = 0
+        
+        while rc == 0:
+            action = page_loader.input()
 
-        elif page_loader.current_active_page() == "CALLPAGE":
-            rc = UserInputHandler.process_calling_input(action)
-
-        elif page_loader.current_active_page() == "DECLINEDPAGE":
-            rc = UserInputHandler.process_declined_input(action)
+            # Do some stuff here
             
-        elif page_loader.current_active_page() == "TIMEOUTPAGE":
-            rc = UserInputHandler.process_timeout_input(action)
-            
-        ## writer.update()
+            rc = page_loader.get_loaded_page().handle_input(
+                client=aud,
+                user_input=action,
+            )
+                
+            ## writer.update()
 
-    aud.terminate_channel()
+        aud.terminate_channel()
     
-    for t in [mixer, writer, watcher, rec, updater]:
-        t.terminate()
+    except Exception as e:
+        print("Error Occured")
+        print(e)
+    
+    finally:
+        curses.nocbreak()
+        curses.curs_set(1)
+        scr.keypad(False)
+        curses.echo()
+        curses.endwin()
+        curses.noraw()
+        
+        for t in [mixer, writer, watcher, rec, updater]:
+            t.terminate()
     
       
