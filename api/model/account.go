@@ -1,4 +1,4 @@
-package database
+package model
 
 import (
 	"database/sql"
@@ -13,11 +13,11 @@ import (
 var tableName string = "Account"
 
 type Account struct {
-	Username string `json:"username"`
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	IsActive bool   `json:"-"`
+	Username string `json:"username" column:"username"`
+	Name     string `json:"name" column:"name"`
+	Email    string `json:"email" column:"email"`
+	Password string `json:"password" column:"password"`
+	IsActive bool   `json:"-" column:"is_active"`
 }
 
 func (acc *Account) FromJSON(r io.Reader, checkRequired bool) error {
