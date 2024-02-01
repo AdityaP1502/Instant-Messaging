@@ -1,6 +1,7 @@
 package util
 
 import (
+	"encoding/base64"
 	"os"
 )
 
@@ -27,8 +28,9 @@ type Config struct {
 	} `json:"certificate"`
 
 	Session struct {
-		ExpireTime int    `json:"expireTime,string"`
-		SecretKey  string `json:"secretKey"`
+		ExpireTime      int    `json:"expireTime,string"`
+		SecretKeyBase64 string `json:"secretKey"`
+		secretKeyRaw    []byte `json:"-"`
 	} `json:"Session"`
 
 	SMTPConfig struct {
@@ -40,21 +42,30 @@ type Config struct {
 	}
 }
 
-func ReadJSONConfiguration(path string) (Config, error) {
+func ReadJSONConfiguration(path string) (*Config, error) {
 	var config Config
 
 	configFile, err := os.Open(path)
 	defer configFile.Close()
 
 	if err != nil {
-		return config, err
+		return nil, err
 	}
 
 	err = DecodeJSONBody(configFile, &config)
 
 	if err != nil {
-		return config, err
+		return nil, err
 	}
 
-	return config, nil
+	// Convert secretkey base64 to raw
+	key, err := base64.StdEncoding.DecodeString(config.Session.SecretKeyBase64)
+
+	if err != nil {
+		return nil, err
+	}
+
+	config.Session.secretKeyRaw = key
+
+	return &config, nil
 }
