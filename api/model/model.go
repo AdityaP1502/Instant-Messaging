@@ -1,4 +1,4 @@
-package database
+package model
 
 import (
 	"database/sql"
@@ -21,22 +21,22 @@ type Model interface {
 }
 
 func getNonEmptyField(v interface{}) ([]string, []any) {
-	s := reflect.ValueOf(v)
+	s := reflect.ValueOf(v).Elem()
 	typeOfS := s.Type()
 
-	names := make([]string, 8)
-	values := make([]any, 8)
+	names := make([]string, 0, 8)
+	values := make([]any, 0, 8)
 
 	for i := 0; i < typeOfS.NumField(); i++ {
 		field := typeOfS.Field(i)
-		jsonTag := field.Tag.Get("json")
+		columnTag := field.Tag.Get("column")
 
 		// Gatekeep conditional
-		if jsonTag == "-" || jsonTag == "" {
+		if columnTag == "-" || columnTag == "" {
 			continue
 		}
 
-		k := strings.SplitAfter(jsonTag, ",")[0]
+		k := strings.SplitAfter(columnTag, ",")[0]
 		v := s.Field(i).Interface()
 
 		// Check if a field is empty/has value of "zero"
@@ -50,13 +50,14 @@ func getNonEmptyField(v interface{}) ([]string, []any) {
 }
 
 func transformNamesToUpdateQuery(names []string, start int) string {
+	fmt.Println(len(names))
 	q := ""
 	c := start
 
-	for k := range names {
-		q += fmt.Sprintf("%s=$%d", k, c)
+	for _, k := range names {
+		q += fmt.Sprintf("%s=$%d,", k, c)
 		c++
 	}
 
-	return q
+	return q[:len(q)-1]
 }
