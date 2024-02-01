@@ -27,10 +27,17 @@ buildNumber.properties
 *.pyc
 Client/process/doodle/*
 
+# node js
+**/node_modules/
+
 # other files
 *.txt
 *.csv
 *.env
+**/app.config.json
+
+# go binary 
+**/bin/
 
 local/
 
