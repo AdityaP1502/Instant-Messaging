@@ -10,7 +10,7 @@ import (
 
 // table name is account
 
-var tableName string = "Account"
+var tableName string = "account"
 
 type Account struct {
 	Username string `json:"username" column:"username"`
@@ -62,7 +62,7 @@ func (acc *Account) Insert(db *sql.DB) error {
 		VALUES($1, $2, $3, $4, $5)`, tableName,
 	)
 
-	_, err := db.Exec(query, acc.Username, acc.Name, acc.Password, acc.Email, acc.Password, acc.IsActive)
+	_, err := db.Exec(query, acc.Username, acc.Name, acc.Email, acc.Password, acc.IsActive)
 
 	return err
 }
@@ -70,8 +70,8 @@ func (acc *Account) Insert(db *sql.DB) error {
 func (acc *Account) Update(db *sql.DB, conditionColumns []string, conditionsValues []any) error {
 	keys, values := getNonEmptyField(acc)
 
-	updateFieldsString := transformNamesToUpdateQuery(keys, 1)
-	conditionFieldsString := transformNamesToUpdateQuery(conditionColumns, len(keys)+1)
+	updateFieldsString := transformNamesToUpdateQuery(keys, 1, ",")
+	conditionFieldsString := transformNamesToUpdateQuery(conditionColumns, len(keys)+1, " AND ")
 
 	query := fmt.Sprintf("UPDATE %s SET %s WHERE %s", tableName, updateFieldsString, conditionFieldsString)
 
@@ -88,9 +88,11 @@ func (acc *Account) IsExists(db *sql.DB) (bool, error) {
 	var exists bool
 
 	keys, values := getNonEmptyField(acc)
-	conditionString := transformNamesToUpdateQuery(keys, 1)
+	conditionString := transformNamesToUpdateQuery(keys, 1, " AND ")
 
 	query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE %s)", tableName, conditionString)
+
+	fmt.Println(query)
 
 	err := db.QueryRow(query, values...).Scan(&exists)
 
