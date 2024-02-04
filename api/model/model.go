@@ -14,6 +14,7 @@ type Model interface {
 
 	Insert(db *sql.DB) error
 	Update(db *sql.DB, condition map[string]string) error
+	Delete(db *sql.DB) error
 	IsExists(db *sql.DB) (bool, error)
 
 	// Query(db *sql.DB) error
@@ -49,15 +50,15 @@ func getNonEmptyField(v interface{}) ([]string, []any) {
 	return names, values
 }
 
-func transformNamesToUpdateQuery(names []string, start int) string {
+func transformNamesToUpdateQuery(names []string, start int, sep string) string {
 	fmt.Println(len(names))
 	q := ""
 	c := start
 
 	for _, k := range names {
-		q += fmt.Sprintf("%s=$%d,", k, c)
+		q += fmt.Sprintf("%s=$%d%s", k, c, sep)
 		c++
 	}
 
-	return q[:len(q)-1]
+	return q[:len(q)-len(sep)]
 }
