@@ -39,5 +39,7 @@ Client/process/doodle/*
 # go binary 
 **/bin/
 
+# local files
 local/
-
+**/test_env/
+*.sql
