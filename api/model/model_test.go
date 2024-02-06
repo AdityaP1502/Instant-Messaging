@@ -37,7 +37,7 @@ func TestGetNonEmptyField(t *testing.T) {
 		Password: "1234",
 	}
 
-	keys, _ := getNonEmptyField(data)
+	keys, _, _ := getNonEmptyField(data)
 
 	t.Log(keys)
 
