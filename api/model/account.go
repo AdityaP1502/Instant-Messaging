@@ -1,8 +1,6 @@
 package model
 
 import (
-	"database/sql"
-	"fmt"
 	"io"
 
 	"github.com/AdityaP1502/Instant-Messaging/api/api/util"
@@ -13,11 +11,12 @@ import (
 var tableName string = "account"
 
 type Account struct {
-	Username string `json:"username" column:"username"`
-	Name     string `json:"name" column:"name"`
-	Email    string `json:"email" column:"email"`
-	Password string `json:"password" column:"password"`
-	IsActive bool   `json:"-" column:"is_active"`
+	AccountID string `json:"-" db:"account_id"`
+	Username  string `json:"username" db:"username"`
+	Name      string `json:"name" db:"name"`
+	Email     string `json:"email" db:"email"`
+	Password  string `json:"password" db:"password"`
+	IsActive  string `json:"-" db:"is_active"`
 }
 
 func (acc *Account) FromJSON(r io.Reader, checkRequired bool) error {
@@ -56,49 +55,49 @@ func (acc *Account) ToJSON(checkRequired bool) ([]byte, error) {
 	return util.CreateJSONResponse(&tmp)
 }
 
-func (acc *Account) Insert(db *sql.DB) error {
-	query := fmt.Sprintf(
-		`INSERT INTO %s (username, name, email, password, is_active)
-		VALUES($1, $2, $3, $4, $5)`, tableName,
-	)
+// func (acc *Account) Insert(db *sql.DB) error {
+// 	query := fmt.Sprintf(
+// 		`INSERT INTO %s (username, name, email, password, is_active)
+// 		VALUES($1, $2, $3, $4, $5)`, tableName,
+// 	)
 
-	_, err := db.Exec(query, acc.Username, acc.Name, acc.Email, acc.Password, acc.IsActive)
+// 	_, err := db.Exec(query, acc.Username, acc.Name, acc.Email, acc.Password, acc.IsActive)
 
-	return err
-}
+// 	return err
+// }
 
-func (acc *Account) Update(db *sql.DB, conditionColumns []string, conditionsValues []any) error {
-	keys, values := getNonEmptyField(acc)
+// func (acc *Account) Update(db *sql.DB, conditionColumns []string, conditionsValues []any) error {
+// 	keys, values := getNonEmptyField(acc)
 
-	updateFieldsString := transformNamesToUpdateQuery(keys, 1, ",")
-	conditionFieldsString := transformNamesToUpdateQuery(conditionColumns, len(keys)+1, " AND ")
+// 	updateFieldsString := transformNamesToUpdateQuery(keys, 1, ",")
+// 	conditionFieldsString := transformNamesToUpdateQuery(conditionColumns, len(keys)+1, " AND ")
 
-	query := fmt.Sprintf("UPDATE %s SET %s WHERE %s", tableName, updateFieldsString, conditionFieldsString)
+// 	query := fmt.Sprintf("UPDATE %s SET %s WHERE %s", tableName, updateFieldsString, conditionFieldsString)
 
-	values = append(values, conditionsValues...)
+// 	values = append(values, conditionsValues...)
 
-	_, err := db.Exec(query, values...)
+// 	_, err := db.Exec(query, values...)
 
-	return err
-}
+// 	return err
+// }
 
-func (acc *Account) IsExists(db *sql.DB) (bool, error) {
-	//https://stackoverflow.com/questions/32554400/efficiently-determine-if-any-rows-satisfy-a-predicate-in-postgres?rq=3
+// func (acc *Account) IsExists(db *sql.DB) (bool, error) {
+// 	//https://stackoverflow.com/questions/32554400/efficiently-determine-if-any-rows-satisfy-a-predicate-in-postgres?rq=3
 
-	var exists bool
+// 	var exists bool
 
-	keys, values := getNonEmptyField(acc)
-	conditionString := transformNamesToUpdateQuery(keys, 1, " AND ")
+// 	keys, values := getNonEmptyField(acc)
+// 	conditionString := transformNamesToUpdateQuery(keys, 1, " AND ")
 
-	query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE %s)", tableName, conditionString)
+// 	query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM %s WHERE %s)", tableName, conditionString)
 
-	fmt.Println(query)
+// 	fmt.Println(query)
 
-	err := db.QueryRow(query, values...).Scan(&exists)
+// 	err := db.QueryRow(query, values...).Scan(&exists)
 
-	if err != nil {
-		return false, err
-	}
+// 	if err != nil {
+// 		return false, err
+// 	}
 
-	return exists, nil
-}
+// 	return exists, nil
+// }
