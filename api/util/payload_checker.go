@@ -39,7 +39,7 @@ func CheckParametersUnity(v interface{}) error {
 
 		// Check if a field is empty/has value of "zero"
 		if a == reflect.Zero(s.Field(i).Type()).Interface() {
-			return requesterror.MissingParameterError{}.Init(jsonTag)
+			return requesterror.MissingParameterErr.Init(jsonTag)
 		}
 	}
 
@@ -54,7 +54,7 @@ func CheckHeader(h http.Header, headerName []string, expectedValue []mapset.Set[
 
 	for i := 0; i < len(headerName); i++ {
 		if !expectedValue[i].Contains(h.Get(headerName[i])) {
-			return requesterror.HeaderMismatchError{}.Init(headerName[i])
+			return requesterror.HeaderMismatchErr.Init(headerName[i])
 		}
 	}
 
