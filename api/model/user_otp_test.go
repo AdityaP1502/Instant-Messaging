@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/AdityaP1502/Instant-Messaging/api/api/database"
 	"github.com/AdityaP1502/Instant-Messaging/api/api/util"
@@ -22,12 +23,16 @@ func TestInserUserOTP(t *testing.T) {
 	}
 
 	otp, err := util.GenerateOTP()
+	if err != nil {
+		t.Error(err)
+		return
+	}
 
 	otpData := &UserOTP{
 		Username:          newUser.Username,
 		OTPConfirmID:      uuid.NewString(),
 		OTP:               fmt.Sprintf("%d", otp),
-		LastResend:        util.GenerateTimestamp(),
+		LastResend:        time.Now().Format(time.RFC3339),
 		MarkedForDeletion: strconv.FormatBool(false),
 	}
 
@@ -63,11 +68,16 @@ func TestUpdateOTP(t *testing.T) {
 
 	otp, err := util.GenerateOTP()
 
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
 	otpData := &UserOTP{
 		Username:          data.Username,
 		OTPConfirmID:      uuid.NewString(),
 		OTP:               fmt.Sprintf("%d", otp),
-		LastResend:        util.GenerateTimestamp(),
+		LastResend:        time.Now().Format(time.RFC3339),
 		MarkedForDeletion: strconv.FormatBool(false),
 	}
 
@@ -88,10 +98,23 @@ func TestUpdateOTP(t *testing.T) {
 
 	otp, err = util.GenerateOTP()
 
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	now := time.Now().Format(time.RFC3339)
+	loc := time.Now().Location()
+
 	err = querynator.Update(&UserOTP{
 		OTP:        fmt.Sprintf("%d", otp),
-		LastResend: util.GenerateTimestamp(),
+		LastResend: now,
 	}, []string{"username", "otp_confirmation_id"}, []any{searchData.Username, otpData.OTPConfirmID}, db.DB, "user_otp")
+
+	if err != nil {
+		t.Error(err)
+		return
+	}
 
 	searchOTP := &UserOTP{}
 
@@ -113,5 +136,14 @@ func TestUpdateOTP(t *testing.T) {
 		return
 	}
 
+	resendTime, err := time.Parse(time.RFC3339, searchOTP.LastResend)
+
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	t.Logf("Last resend in: %s", now)
+	t.Logf("Last resend in: %s", resendTime.In(loc).Format(time.RFC3339))
 	t.Log("Success")
 }
