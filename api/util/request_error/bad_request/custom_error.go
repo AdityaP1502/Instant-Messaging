@@ -217,6 +217,32 @@ func (e *InvalidPayloadError) Get() *requesterror.RequestError {
 	}
 }
 
+type InvalidOTPError struct {
+	Name    string
+	Code    int
+	Message string
+}
+
+func (e *InvalidOTPError) Error() string {
+	return fmt.Sprintf("Status Code: %d, Message: %s", e.Code, e.Message)
+}
+
+func (e *InvalidOTPError) Init() error {
+	return &InvalidOTPError{
+		Name:    string(OTPInvalid),
+		Message: "OTP provided isn't valid",
+		Code:    400,
+	}
+}
+
+func (e *InvalidOTPError) Get() *requesterror.RequestError {
+	return &requesterror.RequestError{
+		Code:    e.Code,
+		Message: e.Message,
+		Name:    e.Name,
+	}
+}
+
 // Global variables to init error type
 
 var MissingParameterErr = &MissingParameterError{}
@@ -232,3 +258,5 @@ var InvalidEmaiErr = &InvalidEmailError{}
 var UsernameInvalidErr = &UsernameInvalidError{}
 
 var InvalidPayloadErr = &InvalidPayloadError{}
+
+var InvalidOTPErr = &InvalidOTPError{}

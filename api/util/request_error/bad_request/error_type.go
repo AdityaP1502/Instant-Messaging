@@ -11,4 +11,5 @@ const (
 	PasswordWeak         errorType = "password_weak"
 	EmailInvalid         errorType = "invalid_email"
 	PayloadInvalid       errorType = "invalid_payload"
+	OTPInvalid           errorType = "invalid_otp"
 )
