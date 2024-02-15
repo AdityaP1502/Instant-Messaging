@@ -1,4 +1,4 @@
-package requesterror
+package badrequest
 
 type errorType string
 
@@ -10,4 +10,5 @@ const (
 	UsernameInvalid      errorType = "username_invalid"
 	PasswordWeak         errorType = "password_weak"
 	EmailInvalid         errorType = "invalid_email"
+	PayloadInvalid       errorType = "invalid_payload"
 )

@@ -1,4 +1,4 @@
-package requesterror
+package unauthorized
 
 type errorType string
 
