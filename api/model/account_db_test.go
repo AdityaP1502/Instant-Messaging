@@ -56,6 +56,10 @@ func TestInsertUserData(t *testing.T) {
 
 	querynator := database.Querynator{}
 	hash, salt, err := util.HashPassword(newUser.Password, []byte("SUPER_SECRET_KEY"))
+	if err != nil {
+		t.Error(err)
+		return
+	}
 
 	newUser.Password = hash
 	newUser.Salt = salt
@@ -245,6 +249,11 @@ func TestDeleteAccount(t *testing.T) {
 
 	var exist bool
 	exist, err = querynator.IsExists(user, db.DB, "account")
+
+	if err != nil {
+		t.Error(err)
+		return
+	}
 
 	if exist {
 		t.Error("Expected false when check deleted data exist")
