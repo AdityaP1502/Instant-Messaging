@@ -32,7 +32,7 @@ const sendVerificationMail = (to, text, subject) => {
 const app = express ();
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 
 app.listen(PORT, () => {
     console.log("Server Listening on PORT:", PORT);
