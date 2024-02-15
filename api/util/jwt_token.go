@@ -10,6 +10,7 @@ import (
 )
 
 type AccessType string
+type Roles string
 
 var JWT_SIGNING_METHOD jwt.SigningMethod = jwt.SigningMethodHS256
 
@@ -19,14 +20,20 @@ const (
 	Basic   AccessType = "Basic"
 )
 
+const (
+	User  Roles = "User"
+	Admin Roles = "Admin"
+)
+
 type Claims struct {
 	Username   string
 	Email      string
 	AccessType AccessType
+	Roles      string
 	jwt.RegisteredClaims
 }
 
-func GenerateClaims(config *Config, username string, email string, access AccessType) *Claims {
+func GenerateClaims(config *Config, username string, email string, access AccessType, role Roles) *Claims {
 	return &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    config.ApplicationName,
@@ -35,6 +42,7 @@ func GenerateClaims(config *Config, username string, email string, access Access
 		Username:   username,
 		Email:      email,
 		AccessType: access,
+		Roles:      string(role),
 	}
 }
 
