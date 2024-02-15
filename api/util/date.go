@@ -1,14 +1,37 @@
 package util
 
 import (
-	"fmt"
 	"time"
 )
 
 func GenerateTimestamp() string {
 
-	yy, mm, dd := time.Now().Date()
-	hh, MM, ss := time.Now().Clock()
+	return time.Now().Format(time.RFC3339)
+}
 
-	return fmt.Sprintf("%d-%s-%d %d:%d:%d", yy, mm, dd, hh, MM, ss)
+func ParseTimestamp(timestamp string) (time.Time, error) {
+	t, err := time.Parse(time.RFC3339, timestamp)
+
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return t.In(t.Location()), nil
+}
+
+func SecondsDifferenceFromNow(a time.Time) int {
+	return int(time.Since(a).Seconds())
+}
+
+func MinutesDifferenceFronNow(a time.Time) int {
+	return int(time.Since(a).Minutes())
+}
+
+func HoursDifferenceFronNow(a time.Time) int {
+	return int(time.Since(a).Hours())
+}
+
+func TimeDifference(a time.Time, b time.Time) time.Duration {
+	diff := b.Sub(a)
+	return diff
 }
