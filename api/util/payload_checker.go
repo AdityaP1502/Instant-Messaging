@@ -17,7 +17,7 @@ import (
 // This function will ignore field with "omitempty" tag
 func CheckParametersUnity(v interface{}) error {
 	// get interface field
-	s := reflect.ValueOf(v)
+	s := reflect.ValueOf(v).Elem()
 	typeOfS := s.Type()
 
 	for i := 0; i < typeOfS.NumField(); i++ {
