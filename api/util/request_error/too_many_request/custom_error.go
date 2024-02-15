@@ -19,7 +19,7 @@ func (e *ResendIntervalNotReachedError) Error() string {
 // Init the value of empty ResendIntervalNotReachedError
 //
 // args: f (string): the missing field
-func (e *ResendIntervalNotReachedError) Init(f string) error {
+func (e *ResendIntervalNotReachedError) Init() error {
 	return &ResendIntervalNotReachedError{
 		Name:    "otp_resend_interval_not_reached",
 		Message: "Mail has already been sent",
@@ -34,3 +34,5 @@ func (e *ResendIntervalNotReachedError) Get() *requesterror.RequestError {
 		Name:    e.Name,
 	}
 }
+
+var ResendIntervalNotReachedErr = &ResendIntervalNotReachedError{}
