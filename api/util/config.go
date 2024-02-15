@@ -42,6 +42,10 @@ type Config struct {
 		SecretKeyBase64 string `json:"secretKey"`
 		SecretKeyRaw    []byte `json:"-"`
 	} `json:"prehash"`
+
+	OTP struct {
+		ResendDurationMinutes int `json:"resendDurationMinutes,string"`
+	}
 }
 
 func ReadJSONConfiguration(path string) (*Config, error) {
