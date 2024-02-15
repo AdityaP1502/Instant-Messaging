@@ -8,9 +8,12 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/AdityaP1502/Instant-Messaging/api/api/database"
 	"github.com/AdityaP1502/Instant-Messaging/api/api/model"
 	"github.com/AdityaP1502/Instant-Messaging/api/api/util"
 	badrequest "github.com/AdityaP1502/Instant-Messaging/api/api/util/request_error/bad_request"
+	internalserviceerror "github.com/AdityaP1502/Instant-Messaging/api/api/util/request_error/internal_service_error"
+	notfound "github.com/AdityaP1502/Instant-Messaging/api/api/util/request_error/not_found"
 	"github.com/AdityaP1502/Instant-Messaging/api/api/util/request_error/unauthorized"
 	mapset "github.com/deckarep/golang-set/v2"
 )
@@ -20,6 +23,7 @@ type ContextKey string
 const (
 	PayloadKey ContextKey = "payload"
 	ClaimsKey  ContextKey = "Claims"
+	TokenKey   ContextKey = "token"
 )
 
 type middleware func(next http.Handler, db *sql.DB, config *util.Config) http.Handler
@@ -34,41 +38,61 @@ func UseMiddleware(db *sql.DB, config *util.Config, handler http.Handler, middle
 	return chained
 }
 
-func AuthMiddleware(next http.Handler, db *sql.DB, config *util.Config) http.Handler {
-	fn := func(db *sql.DB, config *util.Config, w http.ResponseWriter, r *http.Request) error {
-		// Check for authorization header
+func AuthMiddleware(allowedTokenType ...string) (middleware, error) {
+	allowdTypes := mapset.NewSet[string](allowedTokenType...)
 
-		var token string
+	return func(next http.Handler, db *sql.DB, config *util.Config) http.Handler {
+		fn := func(db *sql.DB, config *util.Config, w http.ResponseWriter, r *http.Request) error {
+			var token string
 
-		auth := r.Header.Get("Authorization")
+			auth := r.Header.Get("Authorization")
 
-		if auth == "" {
-			return unauthorized.EmptyAuthHeaderErr.Init()
+			if auth == "" {
+				return unauthorized.EmptyAuthHeaderErr.Init()
+			}
+
+			if authType, authValue, _ := strings.Cut(auth, " "); authType != "Bearer" {
+				return unauthorized.InvalidAuthHeaderErr.Init(authType)
+			} else {
+				token = authValue
+			}
+
+			claims, err := util.VerifyToken(token, config.Session.SecretKeyRaw)
+
+			if err != nil {
+				return internalserviceerror.InternalServiceErr.Init(err.Error())
+			}
+
+			if !allowdTypes.Contains(string(claims.AccessType)) {
+				return unauthorized.InvalidTokenErr.Init("Your token don't have the required access.")
+			}
+
+			// check if revoked
+			querynator := database.Querynator{}
+
+			isRevoked, err := querynator.IsExists(&model.RevokedToken{Token: token, TokenType: string(claims.AccessType)}, db, "revoked_token")
+
+			if err != nil {
+				return internalserviceerror.InternalServiceErr.Init(err.Error())
+			}
+
+			if isRevoked {
+				return unauthorized.InvalidTokenErr.Init("Token is revoked")
+			}
+
+			ctx := context.WithValue(r.Context(), ClaimsKey, claims)
+			ctx = context.WithValue(ctx, TokenKey, token)
+			next.ServeHTTP(w, r.WithContext(ctx))
+
+			return nil
 		}
 
-		if authType, authValue, _ := strings.Cut(auth, " "); authType != "Bearer" {
-			return unauthorized.InvalidAuthHeaderErr.Init(authType)
-		} else {
-			token = authValue
+		return &Handler{
+			DB:      db,
+			Config:  config,
+			Handler: HandlerLogic(fn),
 		}
-
-		claims, err := util.VerifyToken(token, config.Session.SecretKeyRaw)
-
-		if err != nil {
-			return err
-		}
-
-		ctx := context.WithValue(r.Context(), ClaimsKey, claims)
-		next.ServeHTTP(w, r.WithContext(ctx))
-
-		return nil
-	}
-
-	return &Handler{
-		DB:      db,
-		Config:  config,
-		Handler: HandlerLogic(fn),
-	}
+	}, nil
 }
 
 func IdentitiyAccessManagementMiddleware(allowAccessRole ...string) (middleware, error) {
@@ -80,8 +104,7 @@ func IdentitiyAccessManagementMiddleware(allowAccessRole ...string) (middleware,
 			claims := r.Context().Value(ClaimsKey).(*util.Claims)
 
 			if !roleAccess.Contains(string(claims.Roles)) {
-				// TODO: Change into 404 Not Found Error
-				return fmt.Errorf("Path not found")
+				return notfound.NotFoundErr.Init("path", "Path")
 			}
 
 			next.ServeHTTP(w, r)
@@ -101,7 +124,7 @@ func PayloadCheckMiddleware(template model.Model) (middleware, error) {
 	var payload model.Model
 
 	if reflect.ValueOf(template).Kind() != reflect.Ptr {
-		err := fmt.Errorf("Cannot create middleware. template isn't a pointer")
+		err := fmt.Errorf("cannot create middleware. template isn't a pointer")
 		return nil, err
 	}
 
