@@ -16,15 +16,15 @@ func TestJWTGeneration(t *testing.T) {
 		Session: struct {
 			ExpireTime      int    "json:\"expireTime,string\""
 			SecretKeyBase64 string "json:\"secretKey\""
-			secretKeyRaw    []byte "json:\"-\""
+			SecretKeyRaw    []byte "json:\"-\""
 		}{
 			ExpireTime:   5,
-			secretKeyRaw: jwtKey,
+			SecretKeyRaw: jwtKey,
 		},
 	}
 
-	claims := GenerateClaims(config, "aditya", "adityanotgeh@email.com", Basic)
-	token, err := GenerateToken(claims, config.Session.secretKeyRaw)
+	claims := GenerateClaims(config, "aditya", "adityanotgeh@email.com", Basic, User)
+	token, err := GenerateToken(claims, config.Session.SecretKeyRaw)
 
 	if err != nil {
 		t.Error(err)
@@ -41,22 +41,22 @@ func TestValidJWTToken(t *testing.T) {
 		Session: struct {
 			ExpireTime      int    "json:\"expireTime,string\""
 			SecretKeyBase64 string "json:\"secretKey\""
-			secretKeyRaw    []byte "json:\"-\""
+			SecretKeyRaw    []byte "json:\"-\""
 		}{
 			ExpireTime:   5,
-			secretKeyRaw: jwtKey,
+			SecretKeyRaw: jwtKey,
 		},
 	}
 
-	claims := GenerateClaims(config, "aditya", "adityanotgeh@email.com", Basic)
-	token, err := GenerateToken(claims, config.Session.secretKeyRaw)
+	claims := GenerateClaims(config, "aditya", "adityanotgeh@email.com", Basic, User)
+	token, err := GenerateToken(claims, config.Session.SecretKeyRaw)
 
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	decodedClaims, err := VerifyToken(token, config.Session.secretKeyRaw)
+	decodedClaims, err := VerifyToken(token, config.Session.SecretKeyRaw)
 
 	if err != nil {
 		t.Error(err)
@@ -78,14 +78,14 @@ func TestInvalidToken(t *testing.T) {
 		Session: struct {
 			ExpireTime      int    "json:\"expireTime,string\""
 			SecretKeyBase64 string "json:\"secretKey\""
-			secretKeyRaw    []byte "json:\"-\""
+			SecretKeyRaw    []byte "json:\"-\""
 		}{
 			ExpireTime:   5,
-			secretKeyRaw: jwtKey,
+			SecretKeyRaw: jwtKey,
 		},
 	}
 
-	_, err := VerifyToken(token, config.Session.secretKeyRaw)
+	_, err := VerifyToken(token, config.Session.SecretKeyRaw)
 
 	if !errors.As(err, &requesterror.InvalidTokenErr) {
 		t.Errorf("Wrong error type found")
@@ -102,15 +102,15 @@ func TestExpiredToken(t *testing.T) {
 		Session: struct {
 			ExpireTime      int    "json:\"expireTime,string\""
 			SecretKeyBase64 string "json:\"secretKey\""
-			secretKeyRaw    []byte "json:\"-\""
+			SecretKeyRaw    []byte "json:\"-\""
 		}{
 			ExpireTime:   1,
-			secretKeyRaw: jwtKey,
+			SecretKeyRaw: jwtKey,
 		},
 	}
 
-	claims := GenerateClaims(config, "aditya", "adityanotgeh@email.com", Basic)
-	token, err := GenerateToken(claims, config.Session.secretKeyRaw)
+	claims := GenerateClaims(config, "aditya", "adityanotgeh@email.com", Basic, User)
+	token, err := GenerateToken(claims, config.Session.SecretKeyRaw)
 
 	if err != nil {
 		t.Error(err)
@@ -119,7 +119,7 @@ func TestExpiredToken(t *testing.T) {
 
 	time.Sleep(time.Duration(1) * time.Minute)
 
-	_, err = VerifyToken(token, config.Session.secretKeyRaw)
+	_, err = VerifyToken(token, config.Session.SecretKeyRaw)
 
 	if !errors.As(err, &requesterror.TokenExpiredErr) {
 		t.Errorf("Wrong error type")
