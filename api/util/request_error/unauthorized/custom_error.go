@@ -1,6 +1,10 @@
 package unauthorized
 
-import "fmt"
+import (
+	"fmt"
+
+	requesterror "github.com/AdityaP1502/Instant-Messaging/api/api/util/request_error"
+)
 
 type InvalidAuthHeaderError struct {
 	Name    string
@@ -60,6 +64,14 @@ func (e *InvalidTokenError) Init(f string) error {
 	}
 }
 
+func (e *InvalidTokenError) Get() *requesterror.RequestError {
+	return &requesterror.RequestError{
+		Name:    e.Name,
+		Code:    e.Code,
+		Message: e.Message,
+	}
+}
+
 var InvalidTokenErr = &InvalidTokenError{}
 
 type TokenExpiredError struct {
@@ -77,6 +89,14 @@ func (e *TokenExpiredError) Init() error {
 		Name:    string(InvalidAuthHeader),
 		Message: fmt.Sprintf("Your token has expired."),
 		Code:    403,
+	}
+}
+
+func (e *TokenExpiredError) Get() *requesterror.RequestError {
+	return &requesterror.RequestError{
+		Name:    e.Name,
+		Code:    e.Code,
+		Message: e.Message,
 	}
 }
 
