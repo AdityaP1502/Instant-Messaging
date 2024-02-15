@@ -16,9 +16,9 @@ func (e *NotFoundError) Error() string {
 	return fmt.Sprintf("Status Code: %d, Message: %s", e.Code, e.Message)
 }
 
-func (e *NotFoundError) Init(name string) error {
+func (e *NotFoundError) Init(id string, name string) error {
 	return &NotFoundError{
-		Name:    fmt.Sprintf("%s_not_found", name),
+		Name:    fmt.Sprintf("%s_not_found", id),
 		Message: fmt.Sprintf("%s provided doesn't exist", name),
 		Code:    404,
 	}
@@ -32,4 +32,4 @@ func (e *NotFoundError) Get() *requesterror.RequestError {
 	}
 }
 
-var InternalServiceErr *NotFoundError = &NotFoundError{}
+var NotFoundErr *NotFoundError = &NotFoundError{}
