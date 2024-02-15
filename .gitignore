@@ -38,6 +38,8 @@ Client/process/doodle/*
 
 # go binary 
 **/bin/
+*.exe
+*.o
 
 # local files
 local/
