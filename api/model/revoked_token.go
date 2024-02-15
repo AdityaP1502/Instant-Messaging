@@ -8,7 +8,7 @@ import (
 
 type RevokedToken struct {
 	TokenID   string `json:"-" db:"token_id"`
-	AccountID string `json:"-" dB:"account_id"`
+	Username  string `json:"-" db:"username"`
 	Token     string `json:"token" db:"token"`
 	TokenType string `json:"-" db:"type"`
 	ExpiredAt string `json:"-" db:"expired_at"`
