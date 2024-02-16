@@ -13,18 +13,20 @@ func TestInsertRevokedToken(t *testing.T) {
 	config := &util.Config{
 		ApplicationName: "test-app",
 		Session: struct {
-			ExpireTime      int    "json:\"expireTime,string\""
-			SecretKeyBase64 string "json:\"secretKey\""
-			SecretKeyRaw    []byte "json:\"-\""
+			ExpireTime        int    "json:\"expireTimeMinutes,string\""
+			RefreshExpireTime int    "json:\"refreshExpireTimeMinutes,string\""
+			SecretKeyBase64   string "json:\"secretKey\""
+			SecretKeyRaw      []byte "json:\"-\""
 		}{
-			ExpireTime:   5,
-			SecretKeyRaw: []byte("Thisissecretkey"),
+			ExpireTime:        5,
+			RefreshExpireTime: 60,
+			SecretKeyRaw:      []byte("super super secret key"),
 		},
 	}
 
 	db := connectToDB(t)
 
-	claims := util.GenerateClaims(config, "lucas", "lucas12@gmail.com", util.Basic, util.User)
+	claims := util.GenerateClaims(config, "lucas", "lucas12@gmail.com", util.User)
 	token, err := util.GenerateToken(claims, config.Hash.SecretKeyRaw)
 
 	if err != nil {
@@ -48,18 +50,20 @@ func TestSearchToken(t *testing.T) {
 	config := &util.Config{
 		ApplicationName: "test-app",
 		Session: struct {
-			ExpireTime      int    "json:\"expireTime,string\""
-			SecretKeyBase64 string "json:\"secretKey\""
-			SecretKeyRaw    []byte "json:\"-\""
+			ExpireTime        int    "json:\"expireTimeMinutes,string\""
+			RefreshExpireTime int    "json:\"refreshExpireTimeMinutes,string\""
+			SecretKeyBase64   string "json:\"secretKey\""
+			SecretKeyRaw      []byte "json:\"-\""
 		}{
-			ExpireTime:   5,
-			SecretKeyRaw: []byte("Thisissecretkey"),
+			ExpireTime:        5,
+			RefreshExpireTime: 60,
+			SecretKeyRaw:      []byte("super super secret key"),
 		},
 	}
 
 	db := connectToDB(t)
 
-	claims := util.GenerateClaims(config, "lucas14", "lucas14@gmail.com", util.Basic, util.User)
+	claims := util.GenerateClaims(config, "lucas14", "lucas14@gmail.com", util.User)
 	token, err := util.GenerateToken(claims, config.Hash.SecretKeyRaw)
 
 	if err != nil {

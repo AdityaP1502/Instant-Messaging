@@ -14,16 +14,18 @@ func TestJWTGeneration(t *testing.T) {
 	config := &Config{
 		ApplicationName: "test-app",
 		Session: struct {
-			ExpireTime      int    "json:\"expireTime,string\""
-			SecretKeyBase64 string "json:\"secretKey\""
-			SecretKeyRaw    []byte "json:\"-\""
+			ExpireTime        int    "json:\"expireTimeMinutes,string\""
+			RefreshExpireTime int    "json:\"refreshExpireTimeMinutes,string\""
+			SecretKeyBase64   string "json:\"secretKey\""
+			SecretKeyRaw      []byte "json:\"-\""
 		}{
-			ExpireTime:   5,
-			SecretKeyRaw: jwtKey,
+			ExpireTime:        5,
+			RefreshExpireTime: 60,
+			SecretKeyRaw:      jwtKey,
 		},
 	}
 
-	claims := GenerateClaims(config, "aditya", "adityanotgeh@email.com", Basic, User)
+	claims := GenerateClaims(config, "aditya", "adityanotgeh@email.com", User)
 	token, err := GenerateToken(claims, config.Session.SecretKeyRaw)
 
 	if err != nil {
@@ -39,16 +41,18 @@ func TestValidJWTToken(t *testing.T) {
 	config := &Config{
 		ApplicationName: "test-app",
 		Session: struct {
-			ExpireTime      int    "json:\"expireTime,string\""
-			SecretKeyBase64 string "json:\"secretKey\""
-			SecretKeyRaw    []byte "json:\"-\""
+			ExpireTime        int    "json:\"expireTimeMinutes,string\""
+			RefreshExpireTime int    "json:\"refreshExpireTimeMinutes,string\""
+			SecretKeyBase64   string "json:\"secretKey\""
+			SecretKeyRaw      []byte "json:\"-\""
 		}{
-			ExpireTime:   5,
-			SecretKeyRaw: jwtKey,
+			ExpireTime:        5,
+			RefreshExpireTime: 60,
+			SecretKeyRaw:      jwtKey,
 		},
 	}
 
-	claims := GenerateClaims(config, "aditya", "adityanotgeh@email.com", Basic, User)
+	claims := GenerateClaims(config, "aditya", "adityanotgeh@email.com", User)
 	token, err := GenerateToken(claims, config.Session.SecretKeyRaw)
 
 	if err != nil {
@@ -76,12 +80,14 @@ func TestInvalidToken(t *testing.T) {
 	config := &Config{
 		ApplicationName: "test-app",
 		Session: struct {
-			ExpireTime      int    "json:\"expireTime,string\""
-			SecretKeyBase64 string "json:\"secretKey\""
-			SecretKeyRaw    []byte "json:\"-\""
+			ExpireTime        int    "json:\"expireTimeMinutes,string\""
+			RefreshExpireTime int    "json:\"refreshExpireTimeMinutes,string\""
+			SecretKeyBase64   string "json:\"secretKey\""
+			SecretKeyRaw      []byte "json:\"-\""
 		}{
-			ExpireTime:   5,
-			SecretKeyRaw: jwtKey,
+			ExpireTime:        5,
+			RefreshExpireTime: 60,
+			SecretKeyRaw:      jwtKey,
 		},
 	}
 
@@ -100,16 +106,18 @@ func TestExpiredToken(t *testing.T) {
 	config := &Config{
 		ApplicationName: "test-app",
 		Session: struct {
-			ExpireTime      int    "json:\"expireTime,string\""
-			SecretKeyBase64 string "json:\"secretKey\""
-			SecretKeyRaw    []byte "json:\"-\""
+			ExpireTime        int    "json:\"expireTimeMinutes,string\""
+			RefreshExpireTime int    "json:\"refreshExpireTimeMinutes,string\""
+			SecretKeyBase64   string "json:\"secretKey\""
+			SecretKeyRaw      []byte "json:\"-\""
 		}{
-			ExpireTime:   1,
-			SecretKeyRaw: jwtKey,
+			ExpireTime:        1,
+			RefreshExpireTime: 60,
+			SecretKeyRaw:      jwtKey,
 		},
 	}
 
-	claims := GenerateClaims(config, "aditya", "adityanotgeh@email.com", Basic, User)
+	claims := GenerateClaims(config, "aditya", "adityanotgeh@email.com", User)
 	token, err := GenerateToken(claims, config.Session.SecretKeyRaw)
 
 	if err != nil {
