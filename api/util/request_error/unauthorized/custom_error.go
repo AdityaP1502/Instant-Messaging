@@ -117,3 +117,59 @@ func (e *TokenExpiredError) Get() *requesterror.RequestError {
 }
 
 var TokenExpiredErr = &TokenExpiredError{}
+
+type RefreshDeniedError struct {
+	Name    string
+	Code    int
+	Message string
+}
+
+func (e *RefreshDeniedError) Error() string {
+	return fmt.Sprintf("Status Code: %d, Message: %s", e.Code, e.Message)
+}
+
+func (e *RefreshDeniedError) Init() error {
+	return &RefreshDeniedError{
+		Name:    string(RefreshDenied),
+		Message: "Cannot get new access token when the previous one still active",
+		Code:    403,
+	}
+}
+
+func (e *RefreshDeniedError) Get() *requesterror.RequestError {
+	return &requesterror.RequestError{
+		Name:    e.Name,
+		Code:    e.Code,
+		Message: e.Message,
+	}
+}
+
+var RefreshDeniedErr = &RefreshDeniedError{}
+
+type ClaimsMismatchError struct {
+	Name    string
+	Code    int
+	Message string
+}
+
+func (e *ClaimsMismatchError) Error() string {
+	return fmt.Sprintf("Status Code: %d, Message: %s", e.Code, e.Message)
+}
+
+func (e *ClaimsMismatchError) Init() error {
+	return &ClaimsMismatchError{
+		Name:    string(ClaimsMismatch),
+		Message: "Refresh claims and username claims don't share the same credentials",
+		Code:    403,
+	}
+}
+
+func (e *ClaimsMismatchError) Get() *requesterror.RequestError {
+	return &requesterror.RequestError{
+		Name:    e.Name,
+		Code:    e.Code,
+		Message: e.Message,
+	}
+}
+
+var ClaimsMismatchErr = &ClaimsMismatchError{}
