@@ -49,7 +49,7 @@ func CheckParametersUnity(v interface{}) error {
 // check if a request header match with the expected value
 func CheckHeader(h http.Header, headerName []string, expectedValue []mapset.Set[string]) error {
 	if len(headerName) != len(expectedValue) {
-		return errors.New("Name length isn't equal with value length")
+		return errors.New("name length isn't equal with value length")
 	}
 
 	for i := 0; i < len(headerName); i++ {
