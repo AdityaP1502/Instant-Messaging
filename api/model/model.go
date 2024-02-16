@@ -5,8 +5,8 @@ import (
 )
 
 type Model interface {
-	FromJSON(r io.Reader, checkRequired bool) error
-	ToJSON(checkRequired bool) ([]byte, error)
+	FromJSON(r io.Reader, checkRequired bool, requiredFields []string) error
+	ToJSON(checkRequired bool, requiredFields []string) ([]byte, error)
 
 	// Migrate db functionality to querynator
 	// Insert(db *sql.DB) error
