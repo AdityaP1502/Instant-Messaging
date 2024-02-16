@@ -14,11 +14,11 @@ type TestStruct struct {
 }
 
 func TestCheckPayloadParameters(t *testing.T) {
-	data := TestStruct{
+	data := &TestStruct{
 		ID: "10",
 	}
 
-	err := CheckParametersUnity(data)
+	err := CheckParametersUnity(data, []string{"ID", "Name", "Age"})
 
 	t.Logf("Any error: %s", err)
 

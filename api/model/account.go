@@ -17,7 +17,7 @@ type Account struct {
 	IsActive  string `json:"-" db:"is_active"`
 }
 
-func (acc *Account) FromJSON(r io.Reader, checkRequired bool) error {
+func (acc *Account) FromJSON(r io.Reader, checkRequired bool, requiredFields []string) error {
 	err := util.DecodeJSONBody(r, acc)
 
 	if err != nil {
@@ -25,13 +25,13 @@ func (acc *Account) FromJSON(r io.Reader, checkRequired bool) error {
 	}
 
 	if checkRequired {
-		return util.CheckParametersUnity(acc)
+		return util.CheckParametersUnity(acc, requiredFields)
 	}
 
 	return nil
 }
 
-func (acc *Account) ToJSON(checkRequired bool) ([]byte, error) {
+func (acc *Account) ToJSON(checkRequired bool, requiredFields []string) ([]byte, error) {
 	var err error
 
 	var tmp struct {
@@ -45,7 +45,7 @@ func (acc *Account) ToJSON(checkRequired bool) ([]byte, error) {
 	tmp.Email = acc.Email
 
 	if checkRequired {
-		if err = util.CheckParametersUnity(&tmp); err != nil {
+		if err = util.CheckParametersUnity(&tmp, requiredFields); err != nil {
 			return nil, err
 		}
 	}

@@ -15,7 +15,7 @@ type UserOTP struct {
 	MarkedForDeletion string `json:"-" db:"marked_for_deletion"`
 }
 
-func (o *UserOTP) FromJSON(r io.Reader, checkRequired bool) error {
+func (o *UserOTP) FromJSON(r io.Reader, checkRequired bool, requiredFields []string) error {
 	err := util.DecodeJSONBody(r, o)
 
 	if err != nil {
@@ -23,17 +23,17 @@ func (o *UserOTP) FromJSON(r io.Reader, checkRequired bool) error {
 	}
 
 	if checkRequired {
-		return util.CheckParametersUnity(o)
+		return util.CheckParametersUnity(o, requiredFields)
 	}
 
 	return nil
 }
 
-func (o *UserOTP) ToJSON(checkRequired bool) ([]byte, error) {
+func (o *UserOTP) ToJSON(checkRequired bool, requiredFields []string) ([]byte, error) {
 	var err error
 
 	if checkRequired {
-		if err = util.CheckParametersUnity(o); err != nil {
+		if err = util.CheckParametersUnity(o, requiredFields); err != nil {
 			return nil, err
 		}
 	}

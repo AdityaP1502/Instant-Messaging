@@ -14,7 +14,7 @@ type RevokedToken struct {
 	ExpiredAt string `json:"-" db:"expired_at"`
 }
 
-func (t *RevokedToken) FromJSON(r io.Reader, checkRequired bool) error {
+func (t *RevokedToken) FromJSON(r io.Reader, checkRequired bool, requiredFields []string) error {
 	err := util.DecodeJSONBody(r, t)
 
 	if err != nil {
@@ -22,17 +22,17 @@ func (t *RevokedToken) FromJSON(r io.Reader, checkRequired bool) error {
 	}
 
 	if checkRequired {
-		return util.CheckParametersUnity(t)
+		return util.CheckParametersUnity(t, requiredFields)
 	}
 
 	return nil
 }
 
-func (t *RevokedToken) ToJSON(checkRequired bool) ([]byte, error) {
+func (t *RevokedToken) ToJSON(checkRequired bool, requiredFields []string) ([]byte, error) {
 	var err error
 
 	if checkRequired {
-		if err = util.CheckParametersUnity(t); err != nil {
+		if err = util.CheckParametersUnity(t, requiredFields); err != nil {
 			return nil, err
 		}
 	}
