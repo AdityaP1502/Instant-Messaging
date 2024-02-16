@@ -38,8 +38,8 @@ func UseMiddleware(db *sql.DB, config *util.Config, handler http.Handler, middle
 	return chained
 }
 
-func AuthMiddleware(allowedTokenType ...string) (middleware, error) {
-	allowdTypes := mapset.NewSet[string](allowedTokenType...)
+func AuthMiddleware(allowedTokenType ...util.AccessType) (middleware, error) {
+	allowdTypes := mapset.NewSet[util.AccessType](allowedTokenType...)
 
 	return func(next http.Handler, db *sql.DB, config *util.Config) http.Handler {
 		fn := func(db *sql.DB, config *util.Config, w http.ResponseWriter, r *http.Request) error {
@@ -63,7 +63,7 @@ func AuthMiddleware(allowedTokenType ...string) (middleware, error) {
 				return err
 			}
 
-			if !allowdTypes.Contains(string(claims.AccessType)) {
+			if !allowdTypes.Contains(claims.AccessType) {
 				return unauthorized.InvalidTokenErr.Init("Your token don't have the required access.")
 			}
 
