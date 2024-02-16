@@ -33,6 +33,18 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+func GenerateBasicClaims(config *Config, username string, email string, role Roles) *Claims {
+	return &Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    config.ApplicationName,
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(config.OTP.OTPDurationMinutes) * time.Minute)),
+		},
+		Username:   username,
+		Email:      email,
+		AccessType: Auth,
+		Roles:      string(role),
+	}
+}
 func GenerateClaims(config *Config, username string, email string, role Roles) *Claims {
 	return &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -41,7 +53,7 @@ func GenerateClaims(config *Config, username string, email string, role Roles) *
 		},
 		Username:   username,
 		Email:      email,
-		AccessType: Basic,
+		AccessType: Auth,
 		Roles:      string(role),
 	}
 }
@@ -54,7 +66,7 @@ func GenerateRefreshClaims(config *Config, username string, email string, role R
 		},
 		Username:   username,
 		Email:      email,
-		AccessType: Basic,
+		AccessType: Refresh,
 		Roles:      string(role),
 	}
 }
@@ -85,7 +97,7 @@ func VerifyToken(tokenString string, key []byte) (*Claims, error) {
 
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
-			return nil, requesterror.TokenExpiredErr.Init()
+			return &claims, requesterror.TokenExpiredErr.Init()
 		}
 
 		return nil, requesterror.InvalidTokenErr.Init(err.Error())
