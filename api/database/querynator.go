@@ -9,10 +9,15 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+type QueryOperation interface {
+	Exec(query string, args ...interface{}) (sql.Result, error)
+	QueryRow(query string, args ...interface{}) *sql.Row
+}
+
 type Querynator struct {
 }
 
-func (q *Querynator) Insert(v interface{}, db *sql.DB, tableName string, returnField string) (interface{}, error) {
+func (q *Querynator) Insert(v interface{}, db QueryOperation, tableName string, returnField string) (interface{}, error) {
 	var query string
 	var id interface{}
 	var err error
@@ -48,7 +53,7 @@ func (q *Querynator) Insert(v interface{}, db *sql.DB, tableName string, returnF
 	return id, nil
 }
 
-func (q *Querynator) Delete(v interface{}, db *sql.DB, tableName string) error {
+func (q *Querynator) Delete(v interface{}, db QueryOperation, tableName string) error {
 	// Delete stuff with condition from v here
 	keys, values, _ := getNonEmptyField(v)
 	conditionFieldsString := transformNamesToUpdateQuery(keys, 1, " AND ")
@@ -60,7 +65,7 @@ func (q *Querynator) Delete(v interface{}, db *sql.DB, tableName string) error {
 	return err
 }
 
-func (q *Querynator) Update(v interface{}, conditionNames []string, conditionValues []any, db *sql.DB, tableName string) error {
+func (q *Querynator) Update(v interface{}, conditionNames []string, conditionValues []any, db QueryOperation, tableName string) error {
 	// Update stuff from v with condition here
 	keys, values, _ := getNonEmptyField(v)
 
