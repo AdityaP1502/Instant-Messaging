@@ -60,7 +60,7 @@ func AuthMiddleware(allowedTokenType ...string) (middleware, error) {
 			claims, err := util.VerifyToken(token, config.Session.SecretKeyRaw)
 
 			if err != nil {
-				return internalserviceerror.InternalServiceErr.Init(err.Error())
+				return err
 			}
 
 			if !allowdTypes.Contains(string(claims.AccessType)) {
