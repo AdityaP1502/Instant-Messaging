@@ -17,6 +17,7 @@ import (
 	internalserviceerror "github.com/AdityaP1502/Instant-Messaging/api/api/util/request_error/internal_service_error"
 	notfound "github.com/AdityaP1502/Instant-Messaging/api/api/util/request_error/not_found"
 	toomanyrequest "github.com/AdityaP1502/Instant-Messaging/api/api/util/request_error/too_many_request"
+	"github.com/AdityaP1502/Instant-Messaging/api/api/util/request_error/unauthenticated"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
@@ -190,9 +191,64 @@ func registerHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r *
 	return nil
 }
 
-// func loginHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r *http.Request) error {
+func loginHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r *http.Request) error {
+	payload := r.Context().Value(middleware.PayloadKey).(*model.Account)
 
-// }
+	// Grab password and salt from db associated with username
+	user := &model.Account{}
+	err := querynator.FindOne(&model.Account{Email: payload.Email}, user, db, "account", "username", "password", "password_salt", "is_active")
+
+	switch err {
+	case nil:
+		break
+	case sql.ErrNoRows:
+		return notfound.NotFoundErr.Init("email", "Email")
+	default:
+	}
+
+	if isMatch, err := util.CheckPassword(payload.Password, user.Salt, user.Password, config.Hash.SecretKeyRaw); err != nil {
+		return internalserviceerror.InternalServiceErr.Init(err.Error())
+	} else if !isMatch {
+		return unauthenticated.InvalidCredentialsErr.Init()
+	} else if user.IsActive == strconv.FormatBool(false) {
+		return unauthenticated.InactiveUserErr.Init()
+	}
+
+	// user is good and dandy
+
+	// TODO: This generate claims is rather tedious to write
+	claims := util.GenerateClaims(config, user.Username, payload.Email, util.User)
+	refreshClaims := util.GenerateRefreshClaims(config, user.Username, payload.Email, util.User)
+
+	accessToken, err := util.GenerateToken(claims, config.Session.SecretKeyRaw)
+	if err != nil {
+		return internalserviceerror.InternalServiceErr.Init(err.Error())
+	}
+
+	refreshToken, err := util.GenerateToken(refreshClaims, config.Session.SecretKeyRaw)
+	if err != nil {
+		return internalserviceerror.InternalServiceErr.Init(err.Error())
+	}
+
+	token := struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+	}{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
+
+	json, err := util.CreateJSONResponse(&LoginResponse{Status: "success", Token: token})
+
+	if err != nil {
+		return internalserviceerror.InternalServiceErr.Init(err.Error())
+	}
+
+	w.WriteHeader(200)
+	w.Write(json)
+
+	return nil
+}
 
 func resendOTPHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r *http.Request) error {
 	// TODO: Use Transaction when inserting data or update data into the database
@@ -210,8 +266,12 @@ func resendOTPHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r 
 		"last_resend",
 	)
 
-	if err != nil {
-		return notfound.NotFoundErr.Init("otp_confirmation_id", "OTP Confirmation ID")
+	switch err {
+	case nil:
+		break
+	case sql.ErrNoRows:
+		return notfound.NotFoundErr.Init("email", "Email")
+	default:
 	}
 
 	// Check last resend duration
@@ -309,8 +369,12 @@ func verifyOTPHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r 
 		validOTP, db, "user_otp", "otp", "otp_id",
 	)
 
-	if err != nil {
-		return notfound.NotFoundErr.Init("otp_confirmation_id", "OTP Confirmation ID")
+	switch err {
+	case nil:
+		break
+	case sql.ErrNoRows:
+		return notfound.NotFoundErr.Init("email", "Email")
+	default:
 	}
 
 	if validOTP.OTP != payload.OTP {
@@ -375,9 +439,10 @@ func verifyOTPHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r 
 	return nil
 }
 
-// func refreshTokenHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r *http.Request) error {
-// 	return nil
-// }
+func refreshTokenHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r *http.Request) error {
+
+	return nil
+}
 
 // func logOutHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r *http.Request) error {
 // 	return nil
@@ -404,7 +469,13 @@ func SetAccountRoute(r *mux.Router, db *sql.DB, config *util.Config) {
 		log.Fatal(err)
 	}
 
-	basicAccessAuthMiddleware, _ := middleware.AuthMiddleware(string(util.Basic))
+	loginPayloadMIddleware, err := middleware.PayloadCheckMiddleware(&model.Account{}, "Email", "Password")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	basicAccessAuthMiddleware, _ := middleware.AuthMiddleware(util.Basic)
 
 	// REGISTER ROUTE //
 	register := &middleware.Handler{
@@ -432,6 +503,15 @@ func SetAccountRoute(r *mux.Router, db *sql.DB, config *util.Config) {
 	}
 
 	subrouter.Handle("/otp/{otp_confirmation_id}/resend", middleware.UseMiddleware(db, config, resendOTP, basicAccessAuthMiddleware)).Methods("POST")
+
+	// LOGIN ROUTE //
+	login := &middleware.Handler{
+		DB:      db,
+		Config:  config,
+		Handler: loginHandler,
+	}
+
+	subrouter.Handle("/login", middleware.UseMiddleware(db, config, login, loginPayloadMIddleware))
 
 	// subrouter.Handle("/login", login).Methods("POST")
 
