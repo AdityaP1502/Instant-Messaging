@@ -16,7 +16,7 @@ func ParseTimestamp(timestamp string) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	return t.In(t.Location()), nil
+	return t.In(time.Local), nil
 }
 
 func SecondsDifferenceFromNow(a time.Time) int {
