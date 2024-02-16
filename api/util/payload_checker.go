@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 	"reflect"
-	"strings"
 
+	badrequest "github.com/AdityaP1502/Instant-Messaging/api/api/util/request_error/bad_request"
 	requesterror "github.com/AdityaP1502/Instant-Messaging/api/api/util/request_error/bad_request"
 	mapset "github.com/deckarep/golang-set/v2"
 )
@@ -15,32 +15,37 @@ import (
 // if a field with tag json and have a value empty, the function will
 // return with a non nil value.
 // This function will ignore field with "omitempty" tag
-func CheckParametersUnity(v interface{}) error {
+func CheckParametersUnity(v interface{}, requiredField []string) error {
 	// get interface field
 	s := reflect.ValueOf(v).Elem()
-	typeOfS := s.Type()
+	// typeOfS := s.Type()
 
-	for i := 0; i < typeOfS.NumField(); i++ {
-		field := typeOfS.Field(i)
-		jsonTag := field.Tag.Get("json")
+	// for i := 0; i < typeOfS.NumField(); i++ {
+	// 	field := typeOfS.Field(i)
+	// 	jsonTag := field.Tag.Get("json")
 
-		// Gatekeep conditional
-		if jsonTag == "-" || jsonTag == "" {
-			continue
-		}
+	// 	// Gatekeep conditional
+	// 	if jsonTag == "-" || jsonTag == "" {
+	// 		continue
+	// 	}
 
-		if x := strings.SplitAfter(jsonTag, ","); len(x) > 1 {
-			if x[1] == "omitempty" {
-				continue
+	// 	if x := strings.SplitAfter(jsonTag, ","); len(x) > 1 {
+	// 		if x[1] == "omitempty" {
+	// 			continue
+	// 		}
+	// 	}
+
+	// 	a := s.Field(i).Interface()
+
+	for _, field := range requiredField {
+		f := s.FieldByName(field)
+		if f.IsValid() {
+			// check if a field is empty
+			if reflect.Zero(f.Type()).Interface() == f.Interface() {
+				return badrequest.MissingParameterErr.Init(field)
 			}
 		}
 
-		a := s.Field(i).Interface()
-
-		// Check if a field is empty/has value of "zero"
-		if a == reflect.Zero(s.Field(i).Type()).Interface() {
-			return requesterror.MissingParameterErr.Init(jsonTag)
-		}
 	}
 
 	return nil
