@@ -3,6 +3,7 @@ package routes
 import (
 	"bytes"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	notfound "github.com/AdityaP1502/Instant-Messaging/api/api/util/request_error/not_found"
 	toomanyrequest "github.com/AdityaP1502/Instant-Messaging/api/api/util/request_error/too_many_request"
 	"github.com/AdityaP1502/Instant-Messaging/api/api/util/request_error/unauthenticated"
+	"github.com/AdityaP1502/Instant-Messaging/api/api/util/request_error/unauthorized"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
@@ -26,11 +28,8 @@ import (
 var querynator = &database.Querynator{}
 
 type LoginResponse struct {
-	Status string `json:"status"`
-	Token  struct {
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
-	} `json:"token"`
+	Status string      `json:"status"`
+	Token  model.Token `json:"token"`
 }
 
 type RegisterResponse struct {
@@ -148,7 +147,7 @@ func registerHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r *
 		return internalserviceerror.InternalServiceErr.Init(err.Error())
 	}
 
-	claims := util.GenerateClaims(config, payload.Username, payload.Email, util.User)
+	claims := util.GenerateBasicClaims(config, payload.Username, payload.Email, util.User)
 	token, err := util.GenerateToken(claims, config.Session.SecretKeyRaw)
 
 	if err != nil {
@@ -230,10 +229,7 @@ func loginHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r *htt
 		return internalserviceerror.InternalServiceErr.Init(err.Error())
 	}
 
-	token := struct {
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
-	}{
+	token := model.Token{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}
@@ -440,6 +436,61 @@ func verifyOTPHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r 
 }
 
 func refreshTokenHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r *http.Request) error {
+	payload := r.Context().Value(middleware.PayloadKey).(*model.Token)
+
+	refreshClaims, err := util.VerifyToken(payload.RefreshToken, config.Session.SecretKeyRaw)
+
+	if err != nil {
+		return err
+	}
+
+	if refreshClaims.AccessType != util.Refresh {
+		return unauthorized.InvalidTokenErr.Init("Your refresh token is invalid")
+	}
+
+	// verify that the token is expired
+	accessClaims, err := util.VerifyToken(payload.AccessToken, config.Session.SecretKeyRaw)
+
+	if err == nil {
+		return unauthorized.RefreshDeniedErr.Init()
+	}
+
+	if errors.As(err, &unauthorized.InvalidTokenErr) {
+		return err
+	}
+
+	// Check user refresh and access claims
+	if refreshClaims.Username != accessClaims.Username || refreshClaims.Email != accessClaims.Email {
+		return unauthorized.ClaimsMismatchErr.Init()
+	}
+
+	// Refresh token is valid
+	accessClaims = util.GenerateClaims(config, accessClaims.Username, accessClaims.Email, util.User)
+	refreshClaims = util.GenerateRefreshClaims(config, refreshClaims.Username, refreshClaims.Email, util.User)
+
+	accessToken, err := util.GenerateToken(accessClaims, config.Session.SecretKeyRaw)
+	if err != nil {
+		return internalserviceerror.InternalServiceErr.Init(err.Error())
+	}
+
+	refreshToken, err := util.GenerateToken(refreshClaims, config.Session.SecretKeyRaw)
+	if err != nil {
+		return internalserviceerror.InternalServiceErr.Init(err.Error())
+	}
+
+	token := model.Token{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
+
+	json, err := util.CreateJSONResponse(&LoginResponse{Status: "success", Token: token})
+
+	if err != nil {
+		return internalserviceerror.InternalServiceErr.Init(err.Error())
+	}
+
+	w.WriteHeader(200)
+	w.Write(json)
 
 	return nil
 }
@@ -470,6 +521,12 @@ func SetAccountRoute(r *mux.Router, db *sql.DB, config *util.Config) {
 	}
 
 	loginPayloadMIddleware, err := middleware.PayloadCheckMiddleware(&model.Account{}, "Email", "Password")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	refreshTokenPayloadMiddleware, err := middleware.PayloadCheckMiddleware(&model.Token{}, "RefreshToken", "AccessToken")
 
 	if err != nil {
 		log.Fatal(err)
@@ -511,11 +568,17 @@ func SetAccountRoute(r *mux.Router, db *sql.DB, config *util.Config) {
 		Handler: loginHandler,
 	}
 
-	subrouter.Handle("/login", middleware.UseMiddleware(db, config, login, loginPayloadMIddleware))
+	subrouter.Handle("/login", middleware.UseMiddleware(db, config, login, loginPayloadMIddleware)).Methods("POST")
 
-	// subrouter.Handle("/login", login).Methods("POST")
+	// Refresh Token Route
+	refreshToken := &middleware.Handler{
+		DB:      db,
+		Config:  config,
+		Handler: refreshTokenHandler,
+	}
+
+	subrouter.Handle("/token/refresh", middleware.UseMiddleware(db, config, refreshToken, refreshTokenPayloadMiddleware)).Methods("POST")
 
 	// subrouter.HandleFunc("/logout", logOutHandler).Methods("POST")
-	// subrouter.HandleFunc("/token/refresh", refreshTokenHandler).Methods("POST")
 	// subrouter.HandleFunc("/{username}", patchUserInfoHandler).Methods("PATCH")
 }
