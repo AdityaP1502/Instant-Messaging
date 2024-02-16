@@ -33,7 +33,7 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateClaims(config *Config, username string, email string, access AccessType, role Roles) *Claims {
+func GenerateClaims(config *Config, username string, email string, role Roles) *Claims {
 	return &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    config.ApplicationName,
@@ -41,11 +41,23 @@ func GenerateClaims(config *Config, username string, email string, access Access
 		},
 		Username:   username,
 		Email:      email,
-		AccessType: access,
+		AccessType: Basic,
 		Roles:      string(role),
 	}
 }
 
+func GenerateRefreshClaims(config *Config, username string, email string, role Roles) *Claims {
+	return &Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    config.ApplicationName,
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(config.Session.ExpireTime) * time.Minute)),
+		},
+		Username:   username,
+		Email:      email,
+		AccessType: Basic,
+		Roles:      string(role),
+	}
+}
 func GenerateToken(claim *Claims, key []byte) (string, error) {
 	token := jwt.NewWithClaims(JWT_SIGNING_METHOD, claim)
 	signedToken, err := token.SignedString(key)
@@ -63,9 +75,9 @@ func VerifyToken(tokenString string, key []byte) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &claims,
 		func(token *jwt.Token) (interface{}, error) {
 			if method, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("Signing method invalid")
+				return nil, fmt.Errorf("signing method invalid")
 			} else if method != JWT_SIGNING_METHOD {
-				return nil, fmt.Errorf("Signing method invalid")
+				return nil, fmt.Errorf("signing method invalid")
 			}
 
 			return key, nil
