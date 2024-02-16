@@ -120,12 +120,25 @@ func IdentitiyAccessManagementMiddleware(allowAccessRole ...string) (middleware,
 	}, nil
 }
 
-func PayloadCheckMiddleware(template model.Model) (middleware, error) {
+func PayloadCheckMiddleware(template model.Model, requiredFields ...string) (middleware, error) {
 	var payload model.Model
 
-	if reflect.ValueOf(template).Kind() != reflect.Ptr {
+	p := reflect.ValueOf(template)
+	if p.Kind() != reflect.Ptr {
 		err := fmt.Errorf("cannot create middleware. template isn't a pointer")
 		return nil, err
+	}
+
+	// Struct reflect
+	s := p.Elem()
+	sType := s.Type()
+
+	// Check if the requiredFields is valid
+	for _, field := range requiredFields {
+		f := s.FieldByName(field)
+		if !f.IsValid() {
+			return nil, fmt.Errorf("struct of %s don't have field named %s", s.Type(), field)
+		}
 	}
 
 	return func(next http.Handler, db *sql.DB, config *util.Config) http.Handler {
@@ -135,13 +148,14 @@ func PayloadCheckMiddleware(template model.Model) (middleware, error) {
 				return badrequest.HeaderMismatchErr.Init("Content-Type")
 			}
 
-			payload = reflect.New(reflect.ValueOf(template).Elem().Type()).Interface().(model.Model)
+			// create a new struct with the same type as template
+			payload = reflect.New(sType).Interface().(model.Model)
 
 			if r.Body == nil {
 				return badrequest.InvalidPayloadErr.Init()
 			}
 
-			err := payload.FromJSON(r.Body, true)
+			err := payload.FromJSON(r.Body, true, requiredFields)
 
 			if err != nil {
 				return err
