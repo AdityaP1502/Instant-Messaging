@@ -24,6 +24,14 @@ func (e *InvalidAuthHeaderError) Init(f string) error {
 	}
 }
 
+func (e *InvalidAuthHeaderError) Get() *requesterror.RequestError {
+	return &requesterror.RequestError{
+		Name:    e.Name,
+		Code:    e.Code,
+		Message: e.Message,
+	}
+}
+
 var InvalidAuthHeaderErr = &InvalidAuthHeaderError{}
 
 type EmptyAuthHeaderError struct {
@@ -39,8 +47,16 @@ func (e *EmptyAuthHeaderError) Error() string {
 func (e *EmptyAuthHeaderError) Init() error {
 	return &EmptyAuthHeaderError{
 		Name:    string(EmptyAuthHeader),
-		Message: fmt.Sprintf("Required authorization header in request header"),
+		Message: "Required authorization header in request header",
 		Code:    403,
+	}
+}
+
+func (e *EmptyAuthHeaderError) Get() *requesterror.RequestError {
+	return &requesterror.RequestError{
+		Name:    e.Name,
+		Code:    e.Code,
+		Message: e.Message,
 	}
 }
 
@@ -58,7 +74,7 @@ func (e *InvalidTokenError) Error() string {
 
 func (e *InvalidTokenError) Init(f string) error {
 	return &InvalidTokenError{
-		Name:    string(InvalidAuthHeader),
+		Name:    string(InvalidToken),
 		Message: fmt.Sprintf("Invalid token.%s", f),
 		Code:    403,
 	}
@@ -86,8 +102,8 @@ func (e *TokenExpiredError) Error() string {
 
 func (e *TokenExpiredError) Init() error {
 	return &TokenExpiredError{
-		Name:    string(InvalidAuthHeader),
-		Message: fmt.Sprintf("Your token has expired."),
+		Name:    string(TokenExpired),
+		Message: "Your token has expired.",
 		Code:    403,
 	}
 }
