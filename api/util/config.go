@@ -46,6 +46,7 @@ type Config struct {
 
 	OTP struct {
 		ResendDurationMinutes int `json:"resendDurationMinutes,string"`
+		OTPDurationMinutes    int `json:"otpDurationMinutes,string"`
 	} `json:"otp"`
 }
 
