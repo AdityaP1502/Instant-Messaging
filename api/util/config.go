@@ -28,10 +28,11 @@ type Config struct {
 	} `json:"certificate"`
 
 	Session struct {
-		ExpireTime      int    `json:"expireTime,string"`
-		SecretKeyBase64 string `json:"secretKey"`
-		SecretKeyRaw    []byte `json:"-"`
-	} `json:"Session"`
+		ExpireTime        int    `json:"expireTimeMinutes,string"`
+		RefreshExpireTime int    `json:"refreshExpireTimeMinutes,string"`
+		SecretKeyBase64   string `json:"secretKey"`
+		SecretKeyRaw      []byte `json:"-"`
+	} `json:"token"`
 
 	MailAPI struct {
 		Host string `json:"host"`
@@ -45,18 +46,17 @@ type Config struct {
 
 	OTP struct {
 		ResendDurationMinutes int `json:"resendDurationMinutes,string"`
-	}
+	} `json:"otp"`
 }
 
 func ReadJSONConfiguration(path string) (*Config, error) {
 	var config Config
 
 	configFile, err := os.Open(path)
-	defer configFile.Close()
-
 	if err != nil {
 		return nil, err
 	}
+	defer configFile.Close()
 
 	err = DecodeJSONBody(configFile, &config)
 
