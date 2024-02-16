@@ -27,12 +27,12 @@ func fillMaximumRandomNumber(totalByte int) (*big.Int, *big.Int) {
 	a, ok := a.SetString(min, 16)
 
 	if !ok {
-		panic(errors.New("Cannot create big number for rng"))
+		panic(errors.New("cannot create big number for rng"))
 	}
 
 	b, ok = b.SetString(max, 16)
 	if !ok {
-		panic(errors.New("Cannot create big number for rng"))
+		panic(errors.New("cannot create big number for rng"))
 	}
 
 	return a, b
