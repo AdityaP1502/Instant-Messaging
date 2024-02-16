@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/AdityaP1502/Instant-Messaging/api/api/database"
 	"github.com/AdityaP1502/Instant-Messaging/api/api/middleware"
@@ -18,6 +19,7 @@ import (
 	toomanyrequest "github.com/AdityaP1502/Instant-Messaging/api/api/util/request_error/too_many_request"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/jmoiron/sqlx"
 )
 
 var querynator = &database.Querynator{}
@@ -81,6 +83,8 @@ func sendMailHTTP(message string, subject string, to string, url string) error {
 }
 
 func registerHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r *http.Request) error {
+	// TODO: Use Transaction when inserting data into the database
+
 	payload := r.Context().Value(middleware.PayloadKey).(*model.Account)
 
 	// Check username and email exist or not
@@ -143,7 +147,7 @@ func registerHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r *
 		return internalserviceerror.InternalServiceErr.Init(err.Error())
 	}
 
-	claims := util.GenerateClaims(config, payload.Username, payload.Email, util.Basic, util.User)
+	claims := util.GenerateClaims(config, payload.Username, payload.Email, util.User)
 	token, err := util.GenerateToken(claims, config.Session.SecretKeyRaw)
 
 	if err != nil {
@@ -187,21 +191,27 @@ func registerHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r *
 }
 
 // func loginHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r *http.Request) error {
-// 	return nil
+
 // }
 
 func resendOTPHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r *http.Request) error {
+	// TODO: Use Transaction when inserting data or update data into the database
+
 	vars := mux.Vars(r)
 	confirmID := vars["otp_confirmation_id"]
 	u := &model.UserOTP{OTPConfirmID: confirmID}
 
-	err := querynator.FindOne(&model.UserOTP{OTPConfirmID: confirmID}, u, db, "user_otp",
+	claims := r.Context().Value(middleware.ClaimsKey).(*util.Claims)
+	token := r.Context().Value(middleware.TokenKey).(string)
+
+	// check if confirmation id exists
+	err := querynator.FindOne(&model.UserOTP{OTPConfirmID: confirmID, Username: claims.Username, MarkedForDeletion: strconv.FormatBool(false)}, u, db, "user_otp",
 		"otp_id",
 		"last_resend",
 	)
 
 	if err != nil {
-		return internalserviceerror.InternalServiceErr.Init(err.Error())
+		return notfound.NotFoundErr.Init("otp_confirmation_id", "OTP Confirmation ID")
 	}
 
 	// Check last resend duration
@@ -211,24 +221,28 @@ func resendOTPHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r 
 		return internalserviceerror.InternalServiceErr.Init(err.Error())
 	}
 
-	duration := util.SecondsDifferenceFromNow(t)
+	duration := util.MinutesDifferenceFronNow(t)
 
 	if duration < config.OTP.ResendDurationMinutes {
 		return toomanyrequest.ResendIntervalNotReachedErr.Init()
 	}
 
 	// revoked user token
-	claims := r.Context().Value(middleware.PayloadKey).(*util.Claims)
-	token := r.Context().Value(middleware.TokenKey).(string)
-
-	tId, err := querynator.Insert(&model.RevokedToken{Token: token, ExpiredAt: claims.ExpiresAt.UTC().Weekday().String(), TokenType: string(claims.AccessType)}, db, "revoked_token", "token_id")
+	tId, err := querynator.Insert(&model.RevokedToken{
+		Username:  claims.Username,
+		Token:     token,
+		ExpiredAt: claims.ExpiresAt.Local().Format(time.RFC3339),
+		TokenType: string(claims.AccessType),
+	},
+		db, "revoked_token", "token_id",
+	)
 
 	if err != nil {
 		return internalserviceerror.InternalServiceErr.Init(err.Error())
 	}
 
 	// create a new user token
-	newClaims := util.GenerateClaims(config, claims.Username, claims.Email, util.Basic, util.User)
+	newClaims := util.GenerateClaims(config, claims.Username, claims.Email, util.User)
 	newToken, err := util.GenerateToken(newClaims, config.Session.SecretKeyRaw)
 
 	if err != nil {
@@ -243,11 +257,16 @@ func resendOTPHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r 
 	}
 
 	// send the new otp
-	sendMailHTTP(fmt.Sprintf("Your OTP is %d. Don't share with anyone.", otp),
+	err = sendMailHTTP(fmt.Sprintf("Your OTP is %d. Don't share with anyone.", otp),
 		"User Verification",
 		claims.Email,
 		fmt.Sprintf("http://%s:%d/mail/send", config.MailAPI.Host, config.MailAPI.Port),
 	)
+
+	if err != nil {
+		querynator.Delete(&model.RevokedToken{TokenID: fmt.Sprintf("%d", tId)}, db, "user_otp")
+		return internalserviceerror.InternalServiceErr.Init(err.Error())
+	}
 
 	json, err := util.CreateJSONResponse(struct {
 		Status  string `json:"status"`
@@ -261,7 +280,7 @@ func resendOTPHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r 
 	}
 
 	// Update the otp
-	err = querynator.Update(&model.UserOTP{OTP: fmt.Sprintf("%d", otp)}, []string{"otp_id"}, []any{u.OTPID}, db, "user_otp")
+	err = querynator.Update(&model.UserOTP{OTP: fmt.Sprintf("%d", otp), LastResend: util.GenerateTimestamp()}, []string{"otp_id"}, []any{u.OTPID}, db, "user_otp")
 
 	if err != nil {
 		querynator.Delete(&model.RevokedToken{TokenID: fmt.Sprintf("%d", tId)}, db, "user_otp")
@@ -279,18 +298,18 @@ func verifyOTPHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r 
 
 	payload := r.Context().Value(middleware.PayloadKey).(*model.UserOTP)
 	claims := r.Context().Value(middleware.ClaimsKey).(*util.Claims)
+	token := r.Context().Value(middleware.TokenKey).(string)
 
 	// Fill the username in the payload
 	payload.Username = claims.Username
 
-	err := querynator.FindOne(&model.UserOTP{Username: payload.Username, OTPConfirmID: payload.OTPConfirmID}, validOTP, db, "user_otp", "otp")
+	err := querynator.FindOne(&model.UserOTP{
+		Username: payload.Username, OTPConfirmID: payload.OTPConfirmID,
+		MarkedForDeletion: strconv.FormatBool(false)},
+		validOTP, db, "user_otp", "otp", "otp_id",
+	)
 
 	if err != nil {
-		return internalserviceerror.InternalServiceErr.Init(err.Error())
-	}
-
-	if validOTP.OTP == "" {
-		// not found entry
 		return notfound.NotFoundErr.Init("otp_confirmation_id", "OTP Confirmation ID")
 	}
 
@@ -305,8 +324,47 @@ func verifyOTPHandler(db *sql.DB, config *util.Config, w http.ResponseWriter, r 
 		return internalserviceerror.InternalServiceErr.Init(err.Error())
 	}
 
-	// otp is correct, update user to be an active user
-	err = querynator.Update(&model.Account{IsActive: strconv.FormatBool(true)}, []string{"username"}, []any{claims.Username}, db, "account")
+	// otp is correct, update user to be an active user, marked otp entry, and add token to revoked list
+
+	// create sqlx connection
+	sqlxDb := sqlx.NewDb(db, "postgres")
+	tx, err := sqlxDb.Beginx()
+
+	if err != nil {
+		return internalserviceerror.InternalServiceErr.Init(err.Error())
+	}
+
+	err = querynator.Update(&model.Account{IsActive: strconv.FormatBool(true)}, []string{"username"}, []any{claims.Username}, tx, "account")
+	if err != nil {
+		rollError := tx.Rollback()
+		fmt.Println(rollError.Error())
+		return internalserviceerror.InternalServiceErr.Init(err.Error())
+	}
+
+	err = querynator.Update(&model.UserOTP{MarkedForDeletion: strconv.FormatBool(true)}, []string{"otp_id"}, []any{validOTP.OTPID}, tx, "user_otp")
+
+	if err != nil {
+		rollError := tx.Rollback()
+		fmt.Println(rollError.Error())
+		return internalserviceerror.InternalServiceErr.Init(err.Error())
+	}
+
+	_, err = querynator.Insert(&model.RevokedToken{
+		Token:     token,
+		ExpiredAt: claims.ExpiresAt.Format(time.RFC3339),
+		Username:  claims.Username,
+		TokenType: string(claims.AccessType)},
+		tx, "revoked_token", "",
+	)
+
+	if err != nil {
+		rollError := tx.Rollback()
+		fmt.Println(rollError.Error())
+		return internalserviceerror.InternalServiceErr.Init(err.Error())
+	}
+
+	err = tx.Commit()
+
 	if err != nil {
 		return internalserviceerror.InternalServiceErr.Init(err.Error())
 	}
@@ -334,13 +392,13 @@ func SetAccountRoute(r *mux.Router, db *sql.DB, config *util.Config) {
 	subrouter := r.PathPrefix("/account").Subrouter()
 
 	// Create middleware here
-	userPayloadMiddleware, err := middleware.PayloadCheckMiddleware(&model.Account{})
+	userPayloadMiddleware, err := middleware.PayloadCheckMiddleware(&model.Account{}, "Username", "Name", "Email", "Password")
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	otpPayloadMiddleware, err := middleware.PayloadCheckMiddleware(&model.UserOTP{})
+	otpPayloadMiddleware, err := middleware.PayloadCheckMiddleware(&model.UserOTP{}, "OTPConfirmID", "OTP")
 
 	if err != nil {
 		log.Fatal(err)
@@ -364,7 +422,7 @@ func SetAccountRoute(r *mux.Router, db *sql.DB, config *util.Config) {
 		Handler: verifyOTPHandler,
 	}
 
-	subrouter.Handle("/otp/verify", middleware.UseMiddleware(db, config, verifyOTP, otpPayloadMiddleware, basicAccessAuthMiddleware)).Methods("POST")
+	subrouter.Handle("/otp/verify", middleware.UseMiddleware(db, config, verifyOTP, basicAccessAuthMiddleware, otpPayloadMiddleware)).Methods("POST")
 
 	// RESEND OTP ROUTE //
 	resendOTP := &middleware.Handler{
@@ -373,7 +431,7 @@ func SetAccountRoute(r *mux.Router, db *sql.DB, config *util.Config) {
 		Handler: resendOTPHandler,
 	}
 
-	subrouter.Handle("/otp/{otp_confimartion_id}/resend", middleware.UseMiddleware(db, config, resendOTP, otpPayloadMiddleware, basicAccessAuthMiddleware)).Methods("POST")
+	subrouter.Handle("/otp/{otp_confirmation_id}/resend", middleware.UseMiddleware(db, config, resendOTP, basicAccessAuthMiddleware)).Methods("POST")
 
 	// subrouter.Handle("/login", login).Methods("POST")
 
