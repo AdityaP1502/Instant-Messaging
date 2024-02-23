@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer')
 const express = require(`express`);
 
-require('dotenv').config({path: './mail/.env'})
+require('dotenv').config({path: '.env'})
 
 const sendVerificationMail = (to, text, subject) => {
     // let otp = setOTP(userId, userEmail, parseInt(process.env.OTP_LENGTH));
