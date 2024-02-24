@@ -1,35 +1,25 @@
 package responseerror
 
-import (
-	"fmt"
+const (
+	InternalServiceErr errorType = "internal_service_error"
+)
+
+const (
+	InternalServiceErrorTemplate errorMessageTemplate = "sorry, we cannot proceed with your request at the moment. please try again later!. "
 )
 
 type InternalServiceError struct {
-	Name        string
-	Code        int
-	Message     string
+	*ResponseError
 	Description string
 }
 
-func (e *InternalServiceError) Error() string {
-	return fmt.Sprintf("Status Code: %d, Message: %s", e.Code, e.Message)
-}
-
-func (e *InternalServiceError) Init(f string) error {
+func CreateInternalServiceError(err error) HTTPCustomError {
 	return &InternalServiceError{
-		Name:        "internal_service_error",
-		Message:     "Sorry, it seems there are some problems on your request. Please try again!",
-		Code:        500,
-		Description: f,
+		ResponseError: &ResponseError{
+			Code:    500,
+			Message: string(InternalServiceErrorTemplate),
+			Name:    string(InternalServiceErr),
+		},
+		Description: err.Error(),
 	}
 }
-
-func (e *InternalServiceError) Get() ResponseError {
-	return ResponseError{
-		Code:    e.Code,
-		Message: e.Message,
-		Name:    e.Name,
-	}
-}
-
-var InternalServiceErr *InternalServiceError = &InternalServiceError{}

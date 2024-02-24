@@ -1,7 +1,7 @@
 package responseerror
 
-type ErrorResponse struct {
+type FailedRequestResponse struct {
 	Status    string `json:"status"`
-	Message   string `json:"message"`
 	ErrorType string `json:"error_type"`
+	Message   string `json:"message"`
 }

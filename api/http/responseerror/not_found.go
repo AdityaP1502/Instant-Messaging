@@ -1,7 +1,7 @@
 package responseerror
 
 import (
-	"fmt"
+	"net/http"
 )
 
 type NotFoundError struct {
@@ -10,24 +10,21 @@ type NotFoundError struct {
 	Message string
 }
 
-func (e *NotFoundError) Error() string {
-	return fmt.Sprintf("Status Code: %d, Message: %s", e.Code, e.Message)
-}
+const (
+	NotFoundErr errorType = "resource_not_found"
+)
 
-func (e *NotFoundError) Init(id string, name string) error {
-	return &NotFoundError{
-		Name:    fmt.Sprintf("%s_not_found", id),
-		Message: fmt.Sprintf("%s provided doesn't exist", name),
-		Code:    404,
+const (
+	NotFoundTemplate errorMessageTemplate = "{{.resourceName}} not found"
+)
+
+// Create ResponseError with 404 code and NotFoundErr errorType
+//
+// and NotFoundTemplate : "{{.resourceName}} not found"
+func CreateNotFoundError(namedArgs map[string]string) HTTPCustomError {
+	return &ResponseError{
+		Code:    http.StatusNotFound,
+		Message: ParseMessage(NotFoundTemplate, namedArgs),
+		Name:    string(NotFoundErr),
 	}
 }
-
-func (e *NotFoundError) Get() ResponseError {
-	return ResponseError{
-		Code:    e.Code,
-		Message: e.Message,
-		Name:    e.Name,
-	}
-}
-
-var NotFoundErr *NotFoundError = &NotFoundError{}

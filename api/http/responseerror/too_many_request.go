@@ -1,36 +1,17 @@
 package responseerror
 
-import (
-	"fmt"
+const (
+	ResendIntervalNotReachedErr errorType = "otp_resend_interval_not_reached"
 )
 
-type ResendIntervalNotReachedError struct {
-	Name    string
-	Code    int
-	Message string
-}
+const (
+	ResendIntervalNotReachedMessage errorMessageTemplate = "Mail has already been sent to your registered email"
+)
 
-func (e *ResendIntervalNotReachedError) Error() string {
-	return fmt.Sprintf("Status Code: %d, Message: %s", e.Code, e.Message)
-}
-
-// Init the value of empty ResendIntervalNotReachedError
-//
-// args: f (string): the missing field
-func (e *ResendIntervalNotReachedError) Init() error {
-	return &ResendIntervalNotReachedError{
-		Name:    "otp_resend_interval_not_reached",
-		Message: "Mail has already been sent",
-		Code:    429,
-	}
-}
-
-func (e *ResendIntervalNotReachedError) Get() *ResponseError {
+func CreateTooManyRequestError(t errorType, tmp errorMessageTemplate, namedArgs map[string]string) HTTPCustomError {
 	return &ResponseError{
-		Code:    e.Code,
-		Message: e.Message,
-		Name:    e.Name,
+		Code:    429,
+		Message: ParseMessage(tmp, namedArgs),
+		Name:    string(t),
 	}
 }
-
-var ResendIntervalNotReachedErr = &ResendIntervalNotReachedError{}
