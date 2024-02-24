@@ -27,7 +27,7 @@ type RevokedToken struct {
 
 var querynator = &database.Querynator{}
 
-func IssueTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) error {
+func IssueTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) responseerror.HTTPCustomError {
 	var roles jwtutil.Roles
 	var ok bool
 
@@ -36,7 +36,11 @@ func IssueTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *h
 	body := r.Context().Value(middleware.PayloadKey).(*payload.Credentials)
 
 	if roles, ok = jwtutil.ParseRoles(body.Roles); !ok {
-		return responseerror.InternalServiceErr.Init("Cannot parse given roles")
+		return responseerror.CreateBadRequestError(
+			responseerror.PayloadInvalid,
+			"cannot parse roles",
+			nil,
+		)
 	}
 
 	// Create a new token
@@ -44,7 +48,7 @@ func IssueTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *h
 	err := token.GenerateTokenPair(cf, body.Username, body.Email, roles)
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	resp := &struct {
@@ -58,7 +62,7 @@ func IssueTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *h
 	json, err := jsonutil.EncodeToJson(resp)
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	w.WriteHeader(200)
@@ -67,7 +71,7 @@ func IssueTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *h
 	return nil
 }
 
-func RefreshTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) error {
+func RefreshTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) responseerror.HTTPCustomError {
 	cf := conf.(*config.Config)
 
 	body := r.Context().Value(middleware.PayloadKey).(*payload.Token)
@@ -76,25 +80,31 @@ func RefreshTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r 
 	claims, err := body.CheckRefreshEligibility(cf)
 
 	if err != nil {
-		return err
+		return err.(responseerror.HTTPCustomError)
 	}
 
 	// check if the token is revoked
 	isExist, err := querynator.IsExists(&RevokedToken{Token: body.AccessToken}, db, "revoked_token")
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	if isExist {
-		return responseerror.InvalidTokenErr.Init("trying to refresh a revoked token")
+		return responseerror.CreateUnauthorizedError(
+			responseerror.InvalidToken,
+			responseerror.InvalidTokenMessage,
+			map[string]string{
+				"description": "trying to refresh a revoked token",
+			},
+		)
 	}
 
 	newToken := &payload.Token{}
 
 	err = newToken.GenerateTokenPair(cf, claims.Username, claims.Email, jwtutil.Roles(claims.Roles))
 	if err != nil {
-		return err
+		return err.(responseerror.HTTPCustomError)
 	}
 
 	resp := &struct {
@@ -108,7 +118,7 @@ func RefreshTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r 
 	json, err := jsonutil.EncodeToJson(resp)
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	w.WriteHeader(200)
@@ -117,7 +127,7 @@ func RefreshTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r 
 	return nil
 }
 
-func VerifyTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) error {
+func VerifyTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) responseerror.HTTPCustomError {
 	cf := conf.(*config.Config)
 	body := r.Context().Value(middleware.PayloadKey).(*payload.Access)
 
@@ -133,14 +143,16 @@ func VerifyTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *
 	return nil
 }
 
-func RevokeTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) error {
+func RevokeTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) responseerror.HTTPCustomError {
+	var err error
+
 	cf := conf.(*config.Config)
 	body := r.Context().Value(middleware.PayloadKey).(*payload.Token)
 
 	claims, err := jwtutil.VerifyToken(body.AccessToken, cf.Session.SecretKeyRaw)
 
 	if err != nil {
-		return err
+		return err.(responseerror.HTTPCustomError)
 	}
 
 	_, err = querynator.Insert(&RevokedToken{
@@ -150,7 +162,7 @@ func RevokeTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *
 	}, db, "revoked_token", "")
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	w.WriteHeader(200)

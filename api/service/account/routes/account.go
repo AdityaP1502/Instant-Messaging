@@ -94,7 +94,7 @@ var AUTH_REVOKE_TOKEN_ENDPOINT string = "v1/auth/token/revoke"
 // 	return nil
 // }
 
-func registerHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) error {
+func registerHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) responseerror.HTTPCustomError {
 	var req *httpx.HTTPRequest
 
 	cf := conf.(*config.Config)
@@ -105,52 +105,60 @@ func registerHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *htt
 	exist, err := querynator.IsExists(&payload.Account{Email: body.Email}, db, "account")
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	if exist {
-		return responseerror.ValueNotUniqueErr.Init(responseerror.EmailExists, "email")
+		return responseerror.CreateBadRequestError(
+			responseerror.EmailExists,
+			responseerror.EmailsExistMessage,
+			nil,
+		)
 	}
 
 	exist, err = querynator.IsExists(&payload.Account{Username: body.Username}, db, "account")
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	if exist {
-		return responseerror.ValueNotUniqueErr.Init(responseerror.UsernameExists, "username")
+		return responseerror.CreateBadRequestError(
+			responseerror.UsernameExists,
+			responseerror.UsernameExistMessage,
+			nil,
+		)
 	}
 
 	newUser, err := payload.NewRegisteredAccountPayload(body.Username, body.Name, body.Email, body.Password, cf.Hash.SecretKeyRaw)
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	tx, err := sqlx.NewDb(db, cf.Database.Driver).Beginx()
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	_, err = querynator.Insert(newUser, tx, "account", "account_id")
 	if err != nil {
 		tx.Rollback()
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	otpData, err := payload.NewOTPPayload(body.Username)
 
 	if err != nil {
 		tx.Rollback()
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	_, err = querynator.Insert(otpData, tx, "user_otp", "otp_id")
 
 	if err != nil {
 		tx.Rollback()
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	//TODO: Get access token from auth endpoint
@@ -176,7 +184,7 @@ func registerHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *htt
 
 	if err != nil {
 		tx.Rollback()
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return err.(responseerror.HTTPCustomError)
 	}
 
 	token := &Token{}
@@ -184,7 +192,7 @@ func registerHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *htt
 
 	if err != nil {
 		tx.Rollback()
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return err.(responseerror.HTTPCustomError)
 	}
 
 	// Create an API Call to mail service
@@ -209,13 +217,13 @@ func registerHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *htt
 
 	if err != nil {
 		tx.Rollback()
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return err.(responseerror.HTTPCustomError)
 	}
 
 	err = req.Send(nil)
 	if err != nil {
 		tx.Rollback()
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return err.(responseerror.HTTPCustomError)
 	}
 
 	resp := &RegisterResponse{
@@ -228,7 +236,7 @@ func registerHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *htt
 
 	if err != nil {
 		tx.Rollback()
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	tx.Commit()
@@ -239,7 +247,7 @@ func registerHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *htt
 	return nil
 }
 
-func loginHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) error {
+func loginHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) responseerror.HTTPCustomError {
 	cf := conf.(*config.Config)
 
 	body := r.Context().Value(middleware.PayloadKey).(*payload.Account)
@@ -252,16 +260,24 @@ func loginHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.R
 	case nil:
 		break
 	case sql.ErrNoRows:
-		return responseerror.NotFoundErr.Init("email", "Email")
+		return responseerror.CreateNotFoundError(map[string]string{"resourceName": "email"})
 	default:
 	}
 
 	if isMatch, err := pwdutil.CheckPassword(body.Password, user.Salt, user.Password, cf.Hash.SecretKeyRaw); err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	} else if !isMatch {
-		return responseerror.InvalidCredentialsErr.Init()
+		return responseerror.CreateUnauthenticatedError(
+			responseerror.InvalidCredentials,
+			responseerror.InvalidCredentialsMessage,
+			nil,
+		)
 	} else if user.IsActive == strconv.FormatBool(false) {
-		return responseerror.InactiveUserErr.Init()
+		return responseerror.CreateUnauthenticatedError(
+			responseerror.UserMarkedInActive,
+			responseerror.UserMarkedInActiveMessage,
+			nil,
+		)
 	}
 
 	// user is good and dandy
@@ -284,20 +300,20 @@ func loginHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.R
 	)
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return err.(responseerror.HTTPCustomError)
 	}
 
 	token := Token{}
 	err = req.Send(&token)
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return err.(responseerror.HTTPCustomError)
 	}
 
 	json, err := jsonutil.EncodeToJson(&LoginResponse{Status: "success", Token: token})
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	w.WriteHeader(200)
@@ -306,7 +322,7 @@ func loginHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.R
 	return nil
 }
 
-func resendOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) error {
+func resendOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) responseerror.HTTPCustomError {
 	// TODO: Use Transaction when inserting data or update data into the database
 	cf := conf.(*config.Config)
 
@@ -327,7 +343,9 @@ func resendOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 	case nil:
 		break
 	case sql.ErrNoRows:
-		return responseerror.NotFoundErr.Init("email", "Email")
+		return responseerror.CreateNotFoundError(map[string]string{
+			"resourceName": "email",
+		})
 	default:
 	}
 
@@ -335,13 +353,17 @@ func resendOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 	t, err := date.ParseTimestamp(u.LastResend)
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	duration := date.MinutesDifferenceFronNow(t)
 
 	if duration < cf.OTP.ResendDurationMinutes {
-		return responseerror.ResendIntervalNotReachedErr.Init()
+		return responseerror.CreateTooManyRequestError(
+			responseerror.ResendIntervalNotReachedErr,
+			responseerror.ResendIntervalNotReachedMessage,
+			nil,
+		)
 	}
 
 	// revoked user token
@@ -358,13 +380,13 @@ func resendOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 	)
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	err = req.Send(nil)
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	newToken := &Token{}
@@ -390,18 +412,18 @@ func resendOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 	)
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	err = req.Send(newToken)
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	otp, err := otp.GenerateOTP()
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	req = &httpx.HTTPRequest{}
@@ -424,13 +446,13 @@ func resendOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 	)
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	err = req.Send(nil)
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	json, err := jsonutil.EncodeToJson(struct {
@@ -440,7 +462,7 @@ func resendOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 	}{Status: "success", Message: "OTP has been re-send to your email.", Token: newToken.AccessToken})
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	w.WriteHeader(200)
@@ -450,13 +472,13 @@ func resendOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 	err = querynator.Update(&payload.UserOTP{OTP: otp, LastResend: date.GenerateTimestamp()}, []string{"otp_id"}, []any{u.OTPID}, db, "user_otp")
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	return nil
 }
 
-func verifyOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) error {
+func verifyOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) responseerror.HTTPCustomError {
 	var validOTP = &payload.UserOTP{}
 
 	cf := conf.(*config.Config)
@@ -478,19 +500,23 @@ func verifyOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 	case nil:
 		break
 	case sql.ErrNoRows:
-		return responseerror.NotFoundErr.Init("email", "Email")
+		return responseerror.CreateNotFoundError(map[string]string{"resourceName": "email"})
 	default:
 	}
 
 	if validOTP.OTP != body.OTP {
 		// otp is wrong
-		return responseerror.InvalidOTPErr.Init()
+		return responseerror.CreateBadRequestError(
+			responseerror.OTPInvalid,
+			responseerror.OTPInvalidMessage,
+			nil,
+		)
 	}
 
 	json, err := jsonutil.EncodeToJson(&GenericResponse{Status: "success", Message: "your account has been activated successfully"})
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	// otp is correct, update user to be an active user, marked otp entry, and add token to revoked list
@@ -500,14 +526,14 @@ func verifyOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 	tx, err := sqlxDb.Beginx()
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	err = querynator.Update(&payload.Account{IsActive: strconv.FormatBool(true)}, []string{"username"}, []any{claims.Username}, tx, "account")
 	if err != nil {
 		rollError := tx.Rollback()
 		fmt.Println(rollError.Error())
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	err = querynator.Update(&payload.UserOTP{MarkedForDeletion: strconv.FormatBool(true)}, []string{"otp_id"}, []any{validOTP.OTPID}, tx, "user_otp")
@@ -515,13 +541,13 @@ func verifyOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 	if err != nil {
 		rollError := tx.Rollback()
 		fmt.Println(rollError.Error())
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	if err != nil {
 		rollError := tx.Rollback()
 		fmt.Println(rollError.Error())
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	req := &httpx.HTTPRequest{}
@@ -537,19 +563,19 @@ func verifyOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 	)
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	err = req.Send(nil)
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	err = tx.Commit()
 
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	w.WriteHeader(200)

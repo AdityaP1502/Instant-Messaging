@@ -1,7 +1,6 @@
 package jwtutil
 
 import (
-	"errors"
 	"testing"
 	"time"
 
@@ -94,7 +93,7 @@ func TestInvalidToken(t *testing.T) {
 
 	_, err := VerifyToken(token, config.Session.SecretKeyRaw)
 
-	if !errors.As(err, &responseerror.InvalidTokenErr) {
+	if err.Get().Name != string(responseerror.InvalidToken) {
 		t.Errorf("Wrong error type found")
 		t.Error(err)
 		return
@@ -130,7 +129,7 @@ func TestExpiredToken(t *testing.T) {
 
 	_, err = VerifyToken(token, config.Session.SecretKeyRaw)
 
-	if !errors.As(err, &responseerror.TokenExpiredErr) {
+	if err.(responseerror.HTTPCustomError).Get().Name != string(responseerror.TokenExpired) {
 		t.Errorf("Wrong error type")
 		t.Error(err)
 		return

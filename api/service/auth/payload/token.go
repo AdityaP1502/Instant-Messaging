@@ -1,7 +1,6 @@
 package payload
 
 import (
-	"errors"
 	"io"
 
 	"github.com/AdityaP1502/Instant-Messanging/api/http/httputil"
@@ -67,10 +66,14 @@ func (t *Token) CheckRefreshEligibility(config *config.Config) (*jwtutil.Claims,
 	claims, err := jwtutil.VerifyToken(t.AccessToken, config.Session.SecretKeyRaw)
 
 	if err == nil {
-		return nil, responseerror.RefreshDeniedErr.Init()
+		return nil, responseerror.CreateUnauthorizedError(
+			responseerror.RefreshDenied,
+			responseerror.RefreshDeniedMessage,
+			nil,
+		)
 	}
 
-	if errors.As(err, &responseerror.InvalidTokenErr) {
+	if err.Get().Name == string(responseerror.InvalidToken) {
 		return nil, err
 	}
 
@@ -80,7 +83,11 @@ func (t *Token) CheckRefreshEligibility(config *config.Config) (*jwtutil.Claims,
 	}
 
 	if claims.Username != refreshClaims.Username && claims.Email != refreshClaims.Email {
-		return nil, responseerror.ClaimsMismatchErr.Init()
+		return nil, responseerror.CreateUnauthorizedError(
+			responseerror.ClaimsMismatch,
+			responseerror.ClaimsMismatchMessage,
+			nil,
+		)
 	}
 
 	return claims, nil

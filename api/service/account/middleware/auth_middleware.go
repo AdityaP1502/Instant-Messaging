@@ -1,8 +1,8 @@
 package middleware
 
 import (
+	"context"
 	"database/sql"
-	"errors"
 	"net/http"
 	"strings"
 
@@ -18,9 +18,8 @@ var TokenKey middleware.ContextKey = "token"
 var AUTH_VERIFY_TOKEN_ENDPOINT = "v1/auth/token/verify"
 
 func AuthMiddleware(next http.Handler, db *sql.DB, conf interface{}) http.Handler {
-	fn := func(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) error {
+	fn := func(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) responseerror.HTTPCustomError {
 		var token string
-		var responseError *responseerror.ResponseError
 
 		endpoint := r.Context().Value(middleware.EndpointKey).(string)
 
@@ -29,11 +28,21 @@ func AuthMiddleware(next http.Handler, db *sql.DB, conf interface{}) http.Handle
 		auth := r.Header.Get("Authorization")
 
 		if auth == "" {
-			return responseerror.EmptyAuthHeaderErr.Init()
+			return responseerror.CreateBadRequestError(
+				responseerror.EmptyAuthHeader,
+				responseerror.EmptyAuthHeaderMessage,
+				nil,
+			)
 		}
 
 		if authType, authValue, _ := strings.Cut(auth, " "); authType != "Bearer" {
-			return responseerror.InvalidAuthHeaderErr.Init(authType)
+			return responseerror.CreateUnauthorizedError(
+				responseerror.InvalidAuthHeader,
+				responseerror.InvalidAuthHeaderMessage,
+				map[string]string{
+					"authType": authType,
+				},
+			)
 
 		} else {
 			token = authValue
@@ -56,19 +65,17 @@ func AuthMiddleware(next http.Handler, db *sql.DB, conf interface{}) http.Handle
 		)
 
 		if err != nil {
-			return responseerror.InternalServiceErr.Init(err.Error())
+			return responseerror.CreateInternalServiceError(err)
 		}
 
 		err = req.Send(nil)
 
 		if err != nil {
-			if errors.As(err, &responseError) {
-				return responseerror.TokenExpiredErr.Init()
-			}
-
-			return responseerror.InternalServiceErr.Init(err.Error())
+			return err
 		}
 
+		ctx := context.WithValue(r.Context(), ClaimsKey, claims)
+		next.ServeHTTP(w, r)
 		return nil
 	}
 

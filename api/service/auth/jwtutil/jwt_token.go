@@ -84,7 +84,7 @@ func GenerateToken(claim *Claims, key []byte) (string, error) {
 	return signedToken, nil
 }
 
-func VerifyToken(tokenString string, key []byte) (*Claims, error) {
+func VerifyToken(tokenString string, key []byte) (*Claims, responseerror.HTTPCustomError) {
 	claims := Claims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, &claims,
@@ -100,14 +100,30 @@ func VerifyToken(tokenString string, key []byte) (*Claims, error) {
 
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
-			return &claims, responseerror.InvalidTokenErr.Init(err.Error())
+			return &claims, responseerror.CreateUnauthorizedError(
+				responseerror.TokenExpired,
+				responseerror.TokenExpiredMessage,
+				nil,
+			)
 		}
 
-		return nil, responseerror.InvalidTokenErr.Init(err.Error())
+		return nil, responseerror.CreateUnauthorizedError(
+			responseerror.InvalidToken,
+			responseerror.InvalidTokenMessage,
+			map[string]string{
+				"description": err.Error(),
+			},
+		)
 	}
 
 	if !token.Valid {
-		return nil, responseerror.InvalidTokenErr.Init("")
+		return nil, responseerror.CreateUnauthorizedError(
+			responseerror.InvalidToken,
+			responseerror.InvalidTokenMessage,
+			map[string]string{
+				"description": "",
+			},
+		)
 	}
 
 	// claims, ok := token.Claims.(*Claims)

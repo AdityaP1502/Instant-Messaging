@@ -23,7 +23,7 @@ type Account struct {
 func (acc *Account) FromJSON(r io.Reader, checkRequired bool, requiredFields []string) error {
 	err := jsonutil.DecodeJSON(r, acc)
 	if err != nil {
-		return responseerror.InternalServiceErr.Init(err.Error())
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	if checkRequired {

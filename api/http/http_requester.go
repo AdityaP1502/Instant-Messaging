@@ -3,7 +3,7 @@ package httpx
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/AdityaP1502/Instant-Messanging/api/http/responseerror"
@@ -19,17 +19,17 @@ type HTTPRequest struct {
 	IsSuccess          bool
 }
 
-func (h *HTTPRequest) CreateRequest(host string, port int, endpoint string, method string, successStatus int, payload interface{}) (*HTTPRequest, error) {
+func (h *HTTPRequest) CreateRequest(host string, port int, endpoint string, method string, successStatus int, payload interface{}) (*HTTPRequest, responseerror.HTTPCustomError) {
 	url := fmt.Sprintf("http://%s:%d/%s", host, port, endpoint)
 
 	json, err := jsonutil.EncodeToJson(payload)
 	if err != nil {
-		return nil, err
+		return nil, responseerror.CreateInternalServiceError(err)
 	}
 
 	req, err := http.NewRequest(method, url, bytes.NewReader(json))
 	if err != nil {
-		return nil, err
+		return nil, responseerror.CreateInternalServiceError(err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -41,13 +41,13 @@ func (h *HTTPRequest) CreateRequest(host string, port int, endpoint string, meth
 	}, nil
 }
 
-func (h *HTTPRequest) Send(dest interface{}) error {
+func (h *HTTPRequest) Send(dest interface{}) responseerror.HTTPCustomError {
 	var client = &http.Client{}
 
 	resp, err := client.Do(&h.Request)
 
 	if err != nil {
-		return err
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	defer resp.Body.Close()
@@ -57,15 +57,17 @@ func (h *HTTPRequest) Send(dest interface{}) error {
 		// the expected return code
 		// store the payload in the payload field
 
-		respBytes, err := ioutil.ReadAll(resp.Body)
+		respBytes, err := io.ReadAll(resp.Body)
 		fmt.Println(string(respBytes))
 
-		errorResponse := &responseerror.ErrorResponse{}
-		err = jsonutil.DecodeJSON(resp.Body, errorResponse)
+		errorResponse := &responseerror.FailedRequestResponse{}
+		err = jsonutil.DecodeJSON(bytes.NewReader(respBytes), errorResponse)
 
 		if err != nil {
-			return err
+			return responseerror.CreateInternalServiceError(err)
 		}
+
+		fmt.Println(errorResponse)
 
 		return &responseerror.ResponseError{
 			Code:    resp.StatusCode,
@@ -78,5 +80,11 @@ func (h *HTTPRequest) Send(dest interface{}) error {
 		return nil
 	}
 
-	return jsonutil.DecodeJSON(resp.Body, dest)
+	err = jsonutil.DecodeJSON(resp.Body, dest)
+
+	if err != nil {
+		return responseerror.CreateInternalServiceError(err)
+	}
+
+	return nil
 }

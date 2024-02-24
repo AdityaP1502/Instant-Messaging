@@ -9,13 +9,17 @@ import (
 )
 
 func CertMiddleware(db *sql.DB, conf interface{}, next http.Handler) http.Handler {
-	fn := func(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) error {
+	fn := func(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) responseerror.HTTPCustomError {
 		if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
 			// TODO: Check the certificate whether it was revoked
 			next.ServeHTTP(w, r)
 		}
 
-		return responseerror.InvalidTokenErr.Init("Access Denied. Certificate is either empty, invalid, or revoked")
+		return responseerror.CreateUnauthorizedError(
+			responseerror.AccessDenied,
+			responseerror.AccessDeniedMessage,
+			nil,
+		)
 	}
 
 	return &httpx.Handler{

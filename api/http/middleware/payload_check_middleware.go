@@ -35,23 +35,33 @@ func PayloadCheckMiddleware(template httpx.Payload, requiredFields ...string) (M
 	}
 
 	return func(next http.Handler, db *sql.DB, config interface{}) http.Handler {
-		fn := func(db *sql.DB, config interface{}, w http.ResponseWriter, r *http.Request) error {
+		fn := func(db *sql.DB, config interface{}, w http.ResponseWriter, r *http.Request) responseerror.HTTPCustomError {
 
 			if r.Header.Get("Content-Type") != "application/json" {
-				return responseerror.HeaderMismatchErr.Init("Content-Type")
+				return responseerror.CreateBadRequestError(
+					responseerror.HeaderValueMistmatch,
+					responseerror.HeaderValueMistmatchMessage,
+					map[string]string{
+						"name": "Content-Type",
+					},
+				)
 			}
 
 			// create a new struct with the same type as template
 			payload = reflect.New(sType).Interface().(httpx.Payload)
 
 			if r.Body == nil {
-				return responseerror.InvalidPayloadErr.Init()
+				return responseerror.CreateBadRequestError(
+					responseerror.PayloadInvalid,
+					responseerror.PayloadInvalidMessage,
+					nil,
+				)
 			}
 
 			err := payload.FromJSON(r.Body, true, requiredFields)
 
 			if err != nil {
-				return err
+				return responseerror.CreateInternalServiceError(err)
 			}
 
 			ctx := context.WithValue(r.Context(), PayloadKey, payload)

@@ -14,7 +14,7 @@ import (
 // if a field with tag json and have a value empty, the function will
 // return with a non nil value.
 // This function will ignore field with "omitempty" tag
-func CheckParametersUnity(v interface{}, requiredField []string) error {
+func CheckParametersUnity(v interface{}, requiredField []string) responseerror.HTTPCustomError {
 	// get interface field
 	s := reflect.ValueOf(v).Elem()
 	// typeOfS := s.Type()
@@ -41,7 +41,13 @@ func CheckParametersUnity(v interface{}, requiredField []string) error {
 		if f.IsValid() {
 			// check if a field is empty
 			if reflect.Zero(f.Type()).Interface() == f.Interface() {
-				return responseerror.MissingParameterErr.Init(field)
+				return responseerror.CreateBadRequestError(
+					responseerror.MissingParameter,
+					responseerror.MissingParameterMessage,
+					map[string]string{
+						"field": field,
+					},
+				)
 			}
 		}
 
@@ -51,14 +57,20 @@ func CheckParametersUnity(v interface{}, requiredField []string) error {
 }
 
 // check if a request header match with the expected value
-func CheckHeader(h http.Header, headerName []string, expectedValue []mapset.Set[string]) error {
+func CheckHeader(h http.Header, headerName []string, expectedValue []mapset.Set[string]) responseerror.HTTPCustomError {
 	if len(headerName) != len(expectedValue) {
-		return errors.New("name length isn't equal with value length")
+		return responseerror.CreateInternalServiceError(errors.New("name length isn't equal with value length"))
 	}
 
 	for i := 0; i < len(headerName); i++ {
 		if !expectedValue[i].Contains(h.Get(headerName[i])) {
-			return responseerror.HeaderMismatchErr.Init(headerName[i])
+			return responseerror.CreateBadRequestError(
+				responseerror.HeaderValueMistmatch,
+				responseerror.HeaderValueMistmatchMessage,
+				map[string]string{
+					"name": headerName[i],
+				},
+			)
 		}
 	}
 
