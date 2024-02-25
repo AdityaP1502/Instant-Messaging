@@ -153,7 +153,8 @@ func main() {
 				PrivateKey:  caPrivateKey,
 			},
 		},
-		MinVersion: tls.VersionTLS11,
+		MinVersion: tls.VersionTLS10,
+		ClientAuth: tls.VerifyClientCertIfGiven,
 	}
 
 	srv := http.Server{
