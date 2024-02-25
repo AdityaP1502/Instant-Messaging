@@ -1,4 +1,16 @@
 services:
+  proxy:
+    build:
+      context: "../reverse_proxy/"
+      dockerfile: Dockerfile
+      args:
+        - PORT=3000
+      target: final
+    ports:
+      - "3000:3000"
+    networks:
+      - internal
+      - public
   auth:
     build:
       context: "../api/"
@@ -8,7 +20,7 @@ services:
         - PORT=6000
       target: final
     ports:
-      - "6000:6000"
+      - "6000"
     networks:
       - auth
       - internal
@@ -25,7 +37,7 @@ services:
         - PORT=8000
       target: final
     ports:
-      - "6500:8000"
+      - "8000"
     networks:
       - account
       - internal
@@ -36,14 +48,14 @@ services:
   mail:
     build: "../mail/"
     ports:
-      - "4000:4000"
+      - "4000"
     networks:
       - internal
 
   db-account:
     build: "./db/account/"
     ports:
-      - "3000:5432"
+      - "5432"
     networks:
       - account
     healthcheck:
@@ -54,7 +66,7 @@ services:
   db-auth:
     build: "./db/auth/"
     ports:
-      - "3500:5432"
+      - "5432"
     networks:
       - auth
     healthcheck:
@@ -64,6 +76,7 @@ services:
 
 networks:
   auth: {}
-  account: {} 
-  internal: 
+  account: {}
+  internal: {} 
+  public: 
     driver: bridge
