@@ -293,7 +293,7 @@ func loginHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.R
 			Email    string `json:"email"`
 			Roles    string `json:"roles"`
 		}{
-			Username: body.Username,
+			Username: user.Username,
 			Email:    body.Email,
 			Roles:    "user",
 		},
@@ -563,18 +563,21 @@ func verifyOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 	)
 
 	if err != nil {
+		tx.Rollback()
 		return responseerror.CreateInternalServiceError(err)
 	}
 
 	err = req.Send(nil)
 
 	if err != nil {
+		tx.Rollback()
 		return responseerror.CreateInternalServiceError(err)
 	}
 
 	err = tx.Commit()
 
 	if err != nil {
+		tx.Rollback()
 		return responseerror.CreateInternalServiceError(err)
 	}
 
