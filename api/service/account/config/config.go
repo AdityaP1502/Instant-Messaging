@@ -14,9 +14,9 @@ type ServiceAPI struct {
 }
 
 type Config struct {
-	ApplicationName string `json:"app_name"`
-	Version         string `json:"app_ver"`
-	Database        struct {
+	ServiceName string `json:"service_name"`
+	Version     string `json:"version"`
+	Database    struct {
 		Driver   string `json:"driver"`
 		Host     string `json:"host"`
 		Port     int    `json:"port,string"`
