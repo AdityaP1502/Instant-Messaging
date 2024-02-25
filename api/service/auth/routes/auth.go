@@ -2,6 +2,7 @@ package routes
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -128,17 +129,29 @@ func RefreshTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r 
 }
 
 func VerifyTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.Request) responseerror.HTTPCustomError {
+	var err error
 	cf := conf.(*config.Config)
 	body := r.Context().Value(middleware.PayloadKey).(*payload.Access)
 
 	// verify token
-	_, err := jwtutil.VerifyToken(body.AccessToken, cf.Session.SecretKeyRaw)
+	claims, err := jwtutil.VerifyToken(body.AccessToken, cf.Session.SecretKeyRaw)
 
 	if err != nil {
-		return err
+		return err.(responseerror.HTTPCustomError)
 	}
 
 	// TODO: check if current roles can access the endpoint
+	json, err := jsonutil.EncodeToJson(&jwtutil.Claims{
+		Email:    claims.Email,
+		Username: claims.Username,
+		Roles:    claims.Username,
+	})
+
+	if err != nil {
+		return responseerror.CreateInternalServiceError(err)
+	}
+
+	w.Write(json)
 	w.WriteHeader(200)
 	return nil
 }
@@ -155,10 +168,13 @@ func RevokeTokenHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *
 		return err.(responseerror.HTTPCustomError)
 	}
 
+	fmt.Println(claims)
+
 	_, err = querynator.Insert(&RevokedToken{
 		Token:     body.AccessToken,
 		TokenType: string(jwtutil.Auth),
-		ExpiredAt: claims.ExpiresAt.Format(time.RFC3339),
+		ExpiredAt: claims.RegisteredClaims.ExpiresAt.Format(time.RFC3339),
+		Username:  claims.Username,
 	}, db, "revoked_token", "")
 
 	if err != nil {
