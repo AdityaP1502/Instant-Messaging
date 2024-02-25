@@ -2,6 +2,7 @@ package httpx
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 
 	"github.com/AdityaP1502/Instant-Messanging/api/http/responseerror"
@@ -21,6 +22,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := h.Handler(h.DB, h.Config, w, r); err != nil {
+		if internalErr, ok := err.(*responseerror.InternalServiceError); ok {
+			fmt.Println(internalErr.Description)
+		}
+
 		requestErr := err.Get()
 
 		errorResponse := responseerror.FailedRequestResponse{
