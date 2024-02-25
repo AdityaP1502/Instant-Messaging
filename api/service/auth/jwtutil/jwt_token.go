@@ -40,17 +40,17 @@ func ParseRoles(str string) (Roles, bool) {
 }
 
 type Claims struct {
-	Username   string
-	Email      string
-	AccessType AccessType
-	Roles      string
+	Username   string     `json:"username"`
+	Email      string     `json:"email"`
+	Roles      string     `json:"roles"`
+	AccessType AccessType `json:"-"`
 	jwt.RegisteredClaims
 }
 
 func GenerateClaims(config *config.Config, username string, email string, role Roles) *Claims {
 	return &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    config.ApplicationName,
+			Issuer:    config.ServiceName,
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(config.Session.ExpireTime) * time.Minute)),
 		},
 		Username:   username,
@@ -63,7 +63,7 @@ func GenerateClaims(config *config.Config, username string, email string, role R
 func GenerateRefreshClaims(config *config.Config, username string, email string, role Roles) *Claims {
 	return &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    config.ApplicationName,
+			Issuer:    config.ServiceName,
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(config.Session.ExpireTime) * time.Minute)),
 		},
 		Username:   username,
@@ -98,41 +98,29 @@ func VerifyToken(tokenString string, key []byte) (*Claims, responseerror.HTTPCus
 			return key, nil
 		})
 
-	if err != nil {
-		if errors.Is(err, jwt.ErrTokenExpired) {
-			return &claims, responseerror.CreateUnauthorizedError(
-				responseerror.TokenExpired,
-				responseerror.TokenExpiredMessage,
-				nil,
-			)
+	if err == nil {
+		if c, ok := token.Claims.(*Claims); ok && token.Valid {
+			return c, nil
 		}
+	}
 
-		return nil, responseerror.CreateUnauthorizedError(
-			responseerror.InvalidToken,
-			responseerror.InvalidTokenMessage,
-			map[string]string{
-				"description": err.Error(),
-			},
+	// Token not accepted whether
+	// err != nil / token invalid / wrong claims
+
+	if errors.Is(err, jwt.ErrTokenExpired) {
+		return &claims, responseerror.CreateUnauthorizedError(
+			responseerror.TokenExpired,
+			responseerror.TokenExpiredMessage,
+			nil,
 		)
 	}
 
-	if !token.Valid {
-		return nil, responseerror.CreateUnauthorizedError(
-			responseerror.InvalidToken,
-			responseerror.InvalidTokenMessage,
-			map[string]string{
-				"description": "",
-			},
-		)
-	}
-
-	// claims, ok := token.Claims.(*Claims)
-
-	// if !ok {
-	// 	return nil, requesterror.InvalidTokenErr.Init("Unrecognized claims")
-	// }
-
-	// }
-
-	return &claims, nil
+	// if the token not valid nor expired, then the token is invalid
+	return nil, responseerror.CreateUnauthorizedError(
+		responseerror.InvalidToken,
+		responseerror.InvalidTokenMessage,
+		map[string]string{
+			"description": err.Error(),
+		},
+	)
 }
