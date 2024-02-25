@@ -45,3 +45,10 @@ Client/process/doodle/*
 local/
 **/test_env/
 *.sql
+
+# private key and certificate
+cert
+*.key
+*.cert
+*.pem
+*.crt
