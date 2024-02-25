@@ -10,6 +10,7 @@ import (
 	"github.com/AdityaP1502/Instant-Messanging/api/http/middleware"
 	"github.com/AdityaP1502/Instant-Messanging/api/http/responseerror"
 	"github.com/AdityaP1502/Instant-Messanging/api/service/account/config"
+	"github.com/AdityaP1502/Instant-Messanging/api/service/auth/jwtutil"
 )
 
 var ClaimsKey middleware.ContextKey = "claims"
@@ -68,14 +69,18 @@ func AuthMiddleware(next http.Handler, db *sql.DB, conf interface{}) http.Handle
 			return responseerror.CreateInternalServiceError(err)
 		}
 
-		err = req.Send(nil)
+		claims := &jwtutil.Claims{}
+		err = req.Send(claims)
 
 		if err != nil {
 			return err
 		}
 
+		// send token and claims into the next middleware chain
 		ctx := context.WithValue(r.Context(), ClaimsKey, claims)
-		next.ServeHTTP(w, r)
+		ctx = context.WithValue(ctx, TokenKey, token)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
 		return nil
 	}
 
