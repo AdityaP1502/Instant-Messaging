@@ -8,9 +8,10 @@ import (
 )
 
 type ServiceAPI struct {
-	Host   string `json:"host"`
-	Port   int    `json:"port,string"`
-	Scheme string `json:"scheme"`
+	Endpoint string `json:"endpoint"`
+	Host     string `json:"host"`
+	Port     int    `json:"port,string"`
+	Scheme   string `json:"scheme"`
 }
 
 type Config struct {
@@ -28,10 +29,7 @@ type Config struct {
 		KeyFile  string `json:"KeyFile"`
 	} `json:"certificate"`
 
-	Services struct {
-		Account ServiceAPI `json:"account"`
-		Auth    ServiceAPI `json:"auth"`
-	} `json:"services"`
+	Services []ServiceAPI `json:"services"`
 }
 
 func ReadJSONConfiguration(path string) (*Config, error) {

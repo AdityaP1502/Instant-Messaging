@@ -45,63 +45,87 @@ func main() {
 	// Always forward client certificate to endpoint
 	// r.Use(ForwardClientCertMiddleware)
 
-	ver := r.PathPrefix(fmt.Sprintf("/%s", config.Version)).Subrouter()
+	// ver := r.PathPrefix(fmt.Sprintf("/%s", config.Version)).Subrouter()
 
-	authEndpoint, err := url.Parse(
-		fmt.Sprintf(
-			"%s://%s:%d",
-			config.Services.Account.Scheme,
-			config.Services.Auth.Host,
-			config.Services.Auth.Port,
-		),
-	)
+	// authEndpoint, err := url.Parse(
+	// 	fmt.Sprintf(
+	// 		"%s://%s:%d",
+	// 		config.Services.Account.Scheme,
+	// 		config.Services.Auth.Host,
+	// 		config.Services.Auth.Port,
+	// 	),
+	// )
 
-	if err != nil {
-		log.Fatal(err)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// fmt.Println(authEndpoint)
+
+	// authProxy := httputil.NewSingleHostReverseProxy(authEndpoint)
+
+	// auth := ver.PathPrefix("/auth").Subrouter()
+
+	// auth.Use(ForwardClientCertMiddleware)
+	// auth.HandleFunc("/{rest:[a-zA-Z0-9=\\-\\/]+}", func(w http.ResponseWriter, r *http.Request) {
+	// 	r.URL.Host = authEndpoint.Host
+	// 	r.URL.Scheme = "https"
+	// 	r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
+	// 	r.Host = authEndpoint.Host
+
+	// 	authProxy.ServeHTTP(w, r)
+	// })
+
+	// accountEndpoint, err := url.Parse(
+	// 	fmt.Sprintf(
+	// 		"%s://%s:%d",
+	// 		config.Services.Account.Scheme,
+	// 		config.Services.Account.Host,
+	// 		config.Services.Account.Port,
+	// 	),
+	// )
+
+	// fmt.Println(accountEndpoint)
+
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// accountProxy := httputil.NewSingleHostReverseProxy(accountEndpoint)
+
+	// account := ver.PathPrefix("/account").Subrouter()
+	// account.HandleFunc("/{rest:[a-zA-Z0-9=\\-\\/]+}", func(w http.ResponseWriter, r *http.Request) {
+	// 	r.URL.Host = accountEndpoint.Host
+	// 	r.URL.Scheme = "https"
+	// 	r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
+	// 	r.Host = accountEndpoint.Host
+
+	// 	accountProxy.ServeHTTP(w, r)
+	// })
+
+	for _, service := range config.Services {
+		url, err := url.Parse(fmt.Sprintf("%s://%s:%d", service.Scheme, service.Host, service.Port))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Printf("Assigning %s service with %s endpoint to the proxy\n",
+			service.Endpoint,
+			url.Host,
+		)
+
+		proxy := httputil.NewSingleHostReverseProxy(url)
+		subrouter := r.PathPrefix(service.Endpoint).Subrouter()
+
+		subrouter.HandleFunc("/{rest:[a-zA-Z0-9=\\-\\/]+}", func(w http.ResponseWriter, r *http.Request) {
+			r.URL.Host = url.Host
+			r.URL.Scheme = url.Scheme
+			r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
+			r.Host = url.Host
+
+			proxy.ServeHTTP(w, r)
+		})
 	}
-
-	fmt.Println(authEndpoint)
-
-	authProxy := httputil.NewSingleHostReverseProxy(authEndpoint)
-
-	auth := ver.PathPrefix("/auth").Subrouter()
-
-	auth.Use(ForwardClientCertMiddleware)
-	auth.HandleFunc("/{rest:[a-zA-Z0-9=\\-\\/]+}", func(w http.ResponseWriter, r *http.Request) {
-		r.URL.Host = authEndpoint.Host
-		r.URL.Scheme = "https"
-		r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
-		r.Host = authEndpoint.Host
-
-		authProxy.ServeHTTP(w, r)
-	})
-
-	accountEndpoint, err := url.Parse(
-		fmt.Sprintf(
-			"%s://%s:%d",
-			config.Services.Account.Scheme,
-			config.Services.Account.Host,
-			config.Services.Account.Port,
-		),
-	)
-
-	fmt.Println(accountEndpoint)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	accountProxy := httputil.NewSingleHostReverseProxy(accountEndpoint)
-
-	account := ver.PathPrefix("/account").Subrouter()
-	account.HandleFunc("/{rest:[a-zA-Z0-9=\\-\\/]+}", func(w http.ResponseWriter, r *http.Request) {
-		r.URL.Host = accountEndpoint.Host
-		r.URL.Scheme = "https"
-		r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
-		r.Host = accountEndpoint.Host
-
-		accountProxy.ServeHTTP(w, r)
-	})
 
 	wg := sync.WaitGroup{}
 
