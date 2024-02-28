@@ -45,3 +45,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write(json)
 	}
 }
+
+func CreateHTTPHandler(db *sql.DB, conf interface{}, logic HandlerLogic) http.Handler {
+	return &Handler{
+		DB:      db,
+		Config:  conf,
+		Handler: logic,
+	}
+}
