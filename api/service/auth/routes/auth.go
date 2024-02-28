@@ -207,6 +207,8 @@ func SetAuthRoute(r *mux.Router, db *sql.DB, conf *config.Config) {
 		log.Fatal(err)
 	}
 
+	certMiddleware := middleware.CertMiddleware(conf.RootCAs)
+
 	accesspayloadMiddleware, err := middleware.PayloadCheckMiddleware(&payload.Access{}, "Endpoint", "AccessToken")
 
 	if err != nil {
@@ -237,9 +239,9 @@ func SetAuthRoute(r *mux.Router, db *sql.DB, conf *config.Config) {
 		Handler: httpx.HandlerLogic(RevokeTokenHandler),
 	}
 
-	subrouter.Handle("/token/issue", middleware.UseMiddleware(db, conf, issueToken, credentialsPayloadMiddleware))
+	subrouter.Handle("/token/issue", middleware.UseMiddleware(db, conf, issueToken, certMiddleware, credentialsPayloadMiddleware))
 	subrouter.Handle("/token/refresh", middleware.UseMiddleware(db, conf, refreshToken, refreshpayloadMiddleware))
-	subrouter.Handle("/token/verify", middleware.UseMiddleware(db, conf, verifyToken, accesspayloadMiddleware))
-	subrouter.Handle("/token/revoke", middleware.UseMiddleware(db, conf, revokeToken, revokepayloadMiddleware))
+	subrouter.Handle("/token/verify", middleware.UseMiddleware(db, conf, verifyToken, certMiddleware, accesspayloadMiddleware))
+	subrouter.Handle("/token/revoke", middleware.UseMiddleware(db, conf, revokeToken, certMiddleware, revokepayloadMiddleware))
 
 }
