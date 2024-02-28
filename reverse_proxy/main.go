@@ -33,18 +33,11 @@ func ForwardClientCertMiddleware(next http.Handler) http.Handler {
 }
 
 func main() {
-	var scheme string
 	path := "config/app.config.json"
 	config, err := config.ReadJSONConfiguration(path)
 
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	if config.Server.Secure == "false" {
-		scheme = "http"
-	} else {
-		scheme = "https"
 	}
 
 	r := mux.NewRouter()
@@ -57,7 +50,7 @@ func main() {
 	authEndpoint, err := url.Parse(
 		fmt.Sprintf(
 			"%s://%s:%d",
-			scheme,
+			config.Services.Account.Scheme,
 			config.Services.Auth.Host,
 			config.Services.Auth.Port,
 		),
@@ -67,6 +60,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	fmt.Println(authEndpoint)
+
 	authProxy := httputil.NewSingleHostReverseProxy(authEndpoint)
 
 	auth := ver.PathPrefix("/auth").Subrouter()
@@ -74,7 +69,7 @@ func main() {
 	auth.Use(ForwardClientCertMiddleware)
 	auth.HandleFunc("/{rest:[a-zA-Z0-9=\\-\\/]+}", func(w http.ResponseWriter, r *http.Request) {
 		r.URL.Host = authEndpoint.Host
-		r.URL.Scheme = authEndpoint.Scheme
+		r.URL.Scheme = "https"
 		r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
 		r.Host = authEndpoint.Host
 
@@ -84,11 +79,13 @@ func main() {
 	accountEndpoint, err := url.Parse(
 		fmt.Sprintf(
 			"%s://%s:%d",
-			scheme,
+			config.Services.Account.Scheme,
 			config.Services.Account.Host,
 			config.Services.Account.Port,
 		),
 	)
+
+	fmt.Println(accountEndpoint)
 
 	if err != nil {
 		log.Fatal(err)
@@ -99,7 +96,7 @@ func main() {
 	account := ver.PathPrefix("/account").Subrouter()
 	account.HandleFunc("/{rest:[a-zA-Z0-9=\\-\\/]+}", func(w http.ResponseWriter, r *http.Request) {
 		r.URL.Host = accountEndpoint.Host
-		r.URL.Scheme = accountEndpoint.Scheme
+		r.URL.Scheme = "https"
 		r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
 		r.Host = accountEndpoint.Host
 
@@ -111,6 +108,7 @@ func main() {
 	wg.Add(1)
 
 	go func() {
+		defer wg.Done()
 		http.ListenAndServe(
 			fmt.Sprintf("%s:%d", config.Server.Host, config.Server.Port),
 			r,

@@ -8,8 +8,9 @@ import (
 )
 
 type ServiceAPI struct {
-	Host string `json:"host"`
-	Port int    `json:"port,string"`
+	Host   string `json:"host"`
+	Port   int    `json:"port,string"`
+	Scheme string `json:"scheme"`
 }
 
 type Config struct {
