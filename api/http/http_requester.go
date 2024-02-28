@@ -2,6 +2,7 @@ package httpx
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,10 +18,11 @@ type HTTPRequest struct {
 	ReturnedStatusCode int
 	Status             int
 	IsSuccess          bool
+	TLSClientConfig    *tls.Config
 }
 
-func (h *HTTPRequest) CreateRequest(host string, port int, endpoint string, method string, successStatus int, payload interface{}) (*HTTPRequest, responseerror.HTTPCustomError) {
-	url := fmt.Sprintf("http://%s:%d/%s", host, port, endpoint)
+func (h *HTTPRequest) CreateRequest(scheme string, host string, port int, endpoint string, method string, successStatus int, payload interface{}, tlsConfig *tls.Config) (*HTTPRequest, responseerror.HTTPCustomError) {
+	url := fmt.Sprintf("%s://%s:%d/%s", scheme, host, port, endpoint)
 
 	json, err := jsonutil.EncodeToJson(payload)
 	if err != nil {
@@ -38,11 +40,18 @@ func (h *HTTPRequest) CreateRequest(host string, port int, endpoint string, meth
 		Request:           *req,
 		Payload:           nil,
 		SuccessStatusCode: successStatus,
+		TLSClientConfig:   tlsConfig,
 	}, nil
 }
 
 func (h *HTTPRequest) Send(dest interface{}) responseerror.HTTPCustomError {
 	var client = &http.Client{}
+
+	if h.Request.URL.Scheme == "https" {
+		client.Transport = &http.Transport{
+			TLSClientConfig: h.TLSClientConfig,
+		}
+	}
 
 	resp, err := client.Do(&h.Request)
 
@@ -58,7 +67,10 @@ func (h *HTTPRequest) Send(dest interface{}) responseerror.HTTPCustomError {
 		// store the payload in the payload field
 
 		respBytes, err := io.ReadAll(resp.Body)
-		fmt.Println(string(respBytes))
+
+		if err != nil {
+			return responseerror.CreateInternalServiceError(err)
+		}
 
 		errorResponse := &responseerror.FailedRequestResponse{}
 		err = jsonutil.DecodeJSON(bytes.NewReader(respBytes), errorResponse)
