@@ -5,7 +5,9 @@ services:
       dockerfile: Dockerfile
       args:
         - PORT=3000
+        - PKI_HOST=localhost:5500
       target: final
+      network: host
     ports:
       - "3000:3000"
     networks:
@@ -18,7 +20,13 @@ services:
       args:
         - SERVICE_NAME=auth
         - PORT=6000
+        - CSR_FILE_PATH=cert/request.csr
+        - CERT_FILE_PATH=cert/auth-service.cert
+        - PRIVATE_KEY_PATH=cert/auth-service.key
+        - PASSPHRASE=""
+        - PKI_HOST=localhost:5500
       target: final
+      network: host
     ports:
       - "6000"
     networks:
@@ -35,7 +43,13 @@ services:
       args:
         - SERVICE_NAME=account
         - PORT=8000
+        - CSR_FILE_PATH=cert/request.csr
+        - CERT_FILE_PATH=cert/account-service.cert
+        - PRIVATE_KEY_PATH=cert/account-service.key
+        - PASSPHRASE=""
+        - PKI_HOST=localhost:5500
       target: final
+      network: host
     ports:
       - "8000"
     networks:
@@ -77,7 +91,6 @@ services:
 networks:
   auth: {}
   account: {}
-  internal: 
-    external: true
+  internal: {}
   public: 
     driver: bridge
