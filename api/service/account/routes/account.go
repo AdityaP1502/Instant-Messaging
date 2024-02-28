@@ -164,6 +164,7 @@ func registerHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *htt
 	//TODO: Get access token from auth endpoint
 	req = &httpx.HTTPRequest{}
 	req, err = req.CreateRequest(
+		cf.Services.Auth.Scheme,
 		cf.Services.Auth.Host,
 		cf.Services.Auth.Port,
 		AUTH_ISSUE_TOKEN_ENDPOINT,
@@ -180,6 +181,7 @@ func registerHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *htt
 			Roles:     "user",
 			TokenType: "access",
 		},
+		cf.Config,
 	)
 
 	if err != nil {
@@ -198,6 +200,7 @@ func registerHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *htt
 	// Create an API Call to mail service
 	req = &httpx.HTTPRequest{}
 	req, err = req.CreateRequest(
+		cf.Services.Mail.Scheme,
 		cf.Services.Mail.Host,
 		cf.Services.Mail.Port,
 		SEND_MAIL_ENDPOINT,
@@ -213,6 +216,7 @@ func registerHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *htt
 			Message: fmt.Sprintf("Dont share this with anyone. This is your OTP %s. Your token will expired in %d minutes",
 				otpData.OTP, cf.OTP.OTPDurationMinutes),
 		},
+		cf.Config,
 	)
 
 	if err != nil {
@@ -283,6 +287,7 @@ func loginHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.R
 	// user is good and dandy
 	req := &httpx.HTTPRequest{}
 	req, err = req.CreateRequest(
+		cf.Services.Auth.Scheme,
 		cf.Services.Auth.Host,
 		cf.Services.Auth.Port,
 		AUTH_ISSUE_TOKEN_ENDPOINT,
@@ -297,6 +302,7 @@ func loginHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.R
 			Email:    body.Email,
 			Roles:    "user",
 		},
+		cf.Config,
 	)
 
 	if err != nil {
@@ -369,6 +375,7 @@ func resendOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 	// revoked user token
 	req := &httpx.HTTPRequest{}
 	req, err = req.CreateRequest(
+		cf.Services.Auth.Scheme,
 		cf.Services.Auth.Host,
 		cf.Services.Auth.Port,
 		AUTH_REVOKE_TOKEN_ENDPOINT,
@@ -377,6 +384,7 @@ func resendOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 		&Token{
 			AccessToken: token,
 		},
+		cf.Config,
 	)
 
 	if err != nil {
@@ -393,6 +401,7 @@ func resendOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 
 	req = &httpx.HTTPRequest{}
 	req, err = req.CreateRequest(
+		cf.Services.Auth.Scheme,
 		cf.Services.Auth.Host,
 		cf.Services.Auth.Port,
 		AUTH_ISSUE_TOKEN_ENDPOINT,
@@ -409,6 +418,7 @@ func resendOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 			Roles:     "user",
 			TokenType: "access",
 		},
+		cf.Config,
 	)
 
 	if err != nil {
@@ -428,6 +438,7 @@ func resendOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 
 	req = &httpx.HTTPRequest{}
 	req, err = req.CreateRequest(
+		cf.Services.Mail.Scheme,
 		cf.Services.Mail.Host,
 		cf.Services.Mail.Port,
 		SEND_MAIL_ENDPOINT,
@@ -443,6 +454,7 @@ func resendOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 			Message: fmt.Sprintf("Dont share this with anyone. This is your OTP %s. Your token will expired in %d minutes",
 				otp, cf.OTP.OTPDurationMinutes),
 		},
+		cf.Config,
 	)
 
 	if err != nil {
@@ -552,6 +564,7 @@ func verifyOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 
 	req := &httpx.HTTPRequest{}
 	req, err = req.CreateRequest(
+		cf.Services.Auth.Scheme,
 		cf.Services.Auth.Host,
 		cf.Services.Auth.Port,
 		AUTH_REVOKE_TOKEN_ENDPOINT,
@@ -560,6 +573,7 @@ func verifyOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 		&Token{
 			AccessToken: token,
 		},
+		cf.Config,
 	)
 
 	if err != nil {
