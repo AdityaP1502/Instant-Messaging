@@ -6,15 +6,13 @@ services:
       args:
         - CERT_FILE_PATH=cert/root-ca.cert
         - PRIVATE_KEY_PATH=cert/root-ca.key
-        - PASSPHRASE=""
         - PORT=5500
       target: final
     ports:
       - "5500:5500"
-
     networks:
-      - internal
+      - public
 
 networks:
-  internal: 
+  public: 
     driver: bridge
