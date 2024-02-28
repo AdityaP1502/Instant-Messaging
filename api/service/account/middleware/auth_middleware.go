@@ -51,6 +51,7 @@ func AuthMiddleware(next http.Handler, db *sql.DB, conf interface{}) http.Handle
 
 		req := &httpx.HTTPRequest{}
 		req, err := req.CreateRequest(
+			cf.Services.Auth.Scheme,
 			cf.Services.Auth.Host,
 			cf.Services.Auth.Port,
 			AUTH_VERIFY_TOKEN_ENDPOINT,
@@ -63,6 +64,7 @@ func AuthMiddleware(next http.Handler, db *sql.DB, conf interface{}) http.Handle
 				Token:    token,
 				Endpoint: endpoint,
 			},
+			cf.Config,
 		)
 
 		if err != nil {
