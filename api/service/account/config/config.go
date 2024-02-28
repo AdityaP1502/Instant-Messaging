@@ -1,6 +1,7 @@
 package config
 
 import (
+	"crypto/tls"
 	"encoding/base64"
 	"os"
 	"path/filepath"
@@ -9,8 +10,9 @@ import (
 )
 
 type ServiceAPI struct {
-	Host string `json:"host"`
-	Port int    `json:"port,string"`
+	Host   string `json:"host"`
+	Port   int    `json:"port,string"`
+	Scheme string `json:"scheme"`
 }
 
 type Config struct {
@@ -50,6 +52,8 @@ type Config struct {
 		ResendDurationMinutes int `json:"resendDurationMinutes,string"`
 		OTPDurationMinutes    int `json:"otpDurationMinutes,string"`
 	} `json:"otp"`
+
+	*tls.Config
 }
 
 func ReadJSONConfiguration(path string) (*Config, error) {
