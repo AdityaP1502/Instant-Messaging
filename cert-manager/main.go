@@ -19,13 +19,10 @@ import (
 	"github.com/youmark/pkcs8"
 )
 
-type envKey string
-
 var (
-	PASSPHRASE       envKey = "PASSPHRASE"
-	CERT_FILE_PATH   envKey = "CERT_FILE_PATH"
-	PRIVATE_KEY_PATH envKey = "PRIVATE_KEY_PATH"
-	HOST             envKey = "HOST"
+	CERT_FILE_PATH   = "CERT_FILE_PATH"
+	PRIVATE_KEY_PATH = "PRIVATE_KEY_PATH"
+	HOST             = "HOST"
 )
 
 func SignCertificate(csrFile io.Reader, caCRT *x509.Certificate, caPrivateKey interface{}) (*os.File, error) {
@@ -59,10 +56,10 @@ func SignCertificate(csrFile io.Reader, caCRT *x509.Certificate, caPrivateKey in
 		SerialNumber: big.NewInt(2),
 		Issuer:       caCRT.Subject,
 		Subject:      clientCSR.Subject,
+		DNSNames:     clientCSR.DNSNames,
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().Add(24 * time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	}
 
 	// create client certificate from template and CA public key
@@ -82,7 +79,12 @@ func SignCertificate(csrFile io.Reader, caCRT *x509.Certificate, caPrivateKey in
 }
 
 func main() {
-	pw := []byte(os.Getenv(string(PASSPHRASE)))
+
+	pw, err := os.ReadFile("/tmp/passphrase")
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	caPublicKeyFile, err := os.ReadFile(os.Getenv(string(CERT_FILE_PATH)))
 
@@ -144,6 +146,9 @@ func main() {
 
 	}).Methods("POST")
 
+	r.HandleFunc("/certificate", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, os.Getenv(string(CERT_FILE_PATH)))
+	}).Methods("GET")
 	var wg sync.WaitGroup
 
 	tlsConfig := &tls.Config{
@@ -165,6 +170,7 @@ func main() {
 
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		log.Fatal(srv.ListenAndServeTLS("", ""))
 	}()
 
