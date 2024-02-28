@@ -1,6 +1,7 @@
 package config
 
 import (
+	"crypto/tls"
 	"encoding/base64"
 	"os"
 	"path/filepath"
@@ -45,6 +46,8 @@ type Config struct {
 		SecretKeyBase64   string `json:"secretKey"`
 		SecretKeyRaw      []byte `json:"-"`
 	} `json:"token"`
+
+	*tls.Config
 }
 
 func ReadJSONConfiguration(path string) (*Config, error) {
