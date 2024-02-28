@@ -44,7 +44,7 @@ func connectToDB(t *testing.T) *sqlx.DB {
 
 func TestInsertRevokedToken(t *testing.T) {
 	config := &config.Config{
-		ApplicationName: "test-app",
+		ServiceName: "test-app",
 		Session: struct {
 			ExpireTime        int    "json:\"expireTimeMinutes,string\""
 			RefreshExpireTime int    "json:\"refreshExpireTimeMinutes,string\""
@@ -81,7 +81,7 @@ func TestInsertRevokedToken(t *testing.T) {
 
 func TestSearchToken(t *testing.T) {
 	config := &config.Config{
-		ApplicationName: "test-app",
+		ServiceName: "test-app",
 		Session: struct {
 			ExpireTime        int    "json:\"expireTimeMinutes,string\""
 			RefreshExpireTime int    "json:\"refreshExpireTimeMinutes,string\""
