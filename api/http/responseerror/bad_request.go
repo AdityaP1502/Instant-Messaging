@@ -14,6 +14,7 @@ const (
 	EmailInvalid         errorType = "invalid_email"
 	PayloadInvalid       errorType = "invalid_payload"
 	OTPInvalid           errorType = "invalid_otp"
+	CallsStatusInvalid   errorType = "invalid_status_value"
 )
 
 const (
@@ -26,6 +27,7 @@ const (
 	EmailInvalidMessage         errorMessageTemplate = "email is invalid"
 	PayloadInvalidMessage       errorMessageTemplate = "payload is invalid"
 	OTPInvalidMessage           errorMessageTemplate = "otp is invalid"
+	StatusInvalidMessage        errorMessageTemplate = "trying to update status to {{.reqStatus}} when user status is {{.status}}"
 )
 
 // create response error with 400 Code and name string(t)
