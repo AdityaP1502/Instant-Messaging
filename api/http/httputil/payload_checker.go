@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"reflect"
+	"strings"
 
 	"github.com/AdityaP1502/Instant-Messanging/api/http/responseerror"
 	mapset "github.com/deckarep/golang-set/v2"
@@ -17,6 +18,7 @@ import (
 func CheckParametersUnity(v interface{}, requiredField []string) responseerror.HTTPCustomError {
 	// get interface field
 	s := reflect.ValueOf(v).Elem()
+	typeS := s.Type()
 	// typeOfS := s.Type()
 
 	// for i := 0; i < typeOfS.NumField(); i++ {
@@ -37,15 +39,17 @@ func CheckParametersUnity(v interface{}, requiredField []string) responseerror.H
 	// 	a := s.Field(i).Interface()
 
 	for _, field := range requiredField {
-		f := s.FieldByName(field)
-		if f.IsValid() {
+		v := s.FieldByName(field)
+		if v.IsValid() {
 			// check if a field is empty
-			if reflect.Zero(f.Type()).Interface() == f.Interface() {
+			if reflect.Zero(v.Type()).Interface() == v.Interface() {
+				f, _ := typeS.FieldByName(field)
+				tag := strings.SplitN(f.Tag.Get("json"), ",", 2)[0]
 				return responseerror.CreateBadRequestError(
 					responseerror.MissingParameter,
 					responseerror.MissingParameterMessage,
 					map[string]string{
-						"field": field,
+						"field": tag,
 					},
 				)
 			}
