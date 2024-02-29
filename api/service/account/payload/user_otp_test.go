@@ -116,11 +116,6 @@ func TestUpdateOTP(t *testing.T) {
 		return
 	}
 
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
 	if searchOTP.OTP != o {
 		t.Errorf("Data hasn't been updated properly")
 		return
