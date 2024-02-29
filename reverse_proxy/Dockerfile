@@ -24,5 +24,7 @@ RUN cat /usr/local/share/ca-certificates/root-ca.crt >> /etc/ssl/certs/ca-certif
 COPY --from=build /github.com/AdityaP1502/Instant-Messanging/reverse_proxy/app .
 COPY --from=build /github.com/AdityaP1502/Instant-Messanging/reverse_proxy/config/app.config.json config/app.config.json
 
+RUN apk --update --no-cache add curl
+
 EXPOSE $PORT
 CMD ["./app"]
