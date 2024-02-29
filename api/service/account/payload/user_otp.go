@@ -6,6 +6,7 @@ import (
 
 	"github.com/AdityaP1502/Instant-Messanging/api/date"
 	"github.com/AdityaP1502/Instant-Messanging/api/http/httputil"
+	"github.com/AdityaP1502/Instant-Messanging/api/http/responseerror"
 	"github.com/AdityaP1502/Instant-Messanging/api/jsonutil"
 	"github.com/AdityaP1502/Instant-Messanging/api/service/account/otp"
 	"github.com/google/uuid"
@@ -20,11 +21,11 @@ type UserOTP struct {
 	MarkedForDeletion string `json:"-" db:"marked_for_deletion"`
 }
 
-func (o *UserOTP) FromJSON(r io.Reader, checkRequired bool, requiredFields []string) error {
+func (o *UserOTP) FromJSON(r io.Reader, checkRequired bool, requiredFields []string) responseerror.HTTPCustomError {
 	err := jsonutil.DecodeJSON(r, o)
 
 	if err != nil {
-		return err
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	if checkRequired {

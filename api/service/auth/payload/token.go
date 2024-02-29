@@ -15,11 +15,11 @@ type Token struct {
 	AccessToken  string `json:"access_token,omitempty"`
 }
 
-func (t *Token) FromJSON(r io.Reader, checkRequired bool, requiredFields []string) error {
+func (t *Token) FromJSON(r io.Reader, checkRequired bool, requiredFields []string) responseerror.HTTPCustomError {
 	err := jsonutil.DecodeJSON(r, t)
 
 	if err != nil {
-		return err
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	if checkRequired {

@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/AdityaP1502/Instant-Messanging/api/http/httputil"
+	"github.com/AdityaP1502/Instant-Messanging/api/http/responseerror"
 	"github.com/AdityaP1502/Instant-Messanging/api/jsonutil"
 )
 
@@ -12,11 +13,11 @@ type Access struct {
 	Endpoint    string `json:"endpoint"`
 }
 
-func (c *Access) FromJSON(r io.Reader, checkRequired bool, requiredFields []string) error {
+func (c *Access) FromJSON(r io.Reader, checkRequired bool, requiredFields []string) responseerror.HTTPCustomError {
 	err := jsonutil.DecodeJSON(r, c)
 
 	if err != nil {
-		return err
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	if checkRequired {

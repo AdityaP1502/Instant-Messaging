@@ -20,7 +20,7 @@ type Account struct {
 	IsActive  string `json:"-" db:"is_active"`
 }
 
-func (acc *Account) FromJSON(r io.Reader, checkRequired bool, requiredFields []string) error {
+func (acc *Account) FromJSON(r io.Reader, checkRequired bool, requiredFields []string) responseerror.HTTPCustomError {
 	err := jsonutil.DecodeJSON(r, acc)
 	if err != nil {
 		return responseerror.CreateInternalServiceError(err)

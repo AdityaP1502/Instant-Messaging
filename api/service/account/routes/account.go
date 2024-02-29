@@ -266,6 +266,7 @@ func loginHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *http.R
 	case sql.ErrNoRows:
 		return responseerror.CreateNotFoundError(map[string]string{"resourceName": "email"})
 	default:
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	if isMatch, err := pwdutil.CheckPassword(body.Password, user.Salt, user.Password, cf.Hash.SecretKeyRaw); err != nil {
@@ -353,6 +354,7 @@ func resendOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 			"resourceName": "email",
 		})
 	default:
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	// Check last resend duration
@@ -514,6 +516,7 @@ func verifyOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 	case sql.ErrNoRows:
 		return responseerror.CreateNotFoundError(map[string]string{"resourceName": "email"})
 	default:
+		return responseerror.CreateInternalServiceError(err)
 	}
 
 	if validOTP.OTP != body.OTP {
@@ -549,12 +552,6 @@ func verifyOTPHandler(db *sql.DB, conf interface{}, w http.ResponseWriter, r *ht
 	}
 
 	err = querynator.Update(&payload.UserOTP{MarkedForDeletion: strconv.FormatBool(true)}, []string{"otp_id"}, []any{validOTP.OTPID}, tx, "user_otp")
-
-	if err != nil {
-		rollError := tx.Rollback()
-		fmt.Println(rollError.Error())
-		return responseerror.CreateInternalServiceError(err)
-	}
 
 	if err != nil {
 		rollError := tx.Rollback()
