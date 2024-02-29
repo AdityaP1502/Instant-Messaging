@@ -42,10 +42,15 @@ func main() {
 
 	r := mux.NewRouter()
 
-	// Always forward client certificate to endpoint
-	// r.Use(ForwardClientCertMiddleware)
+	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("healthy\n"))
+		w.WriteHeader(200)
+	}).Methods("GET")
 
-	// ver := r.PathPrefix(fmt.Sprintf("/%s", config.Version)).Subrouter()
+	// Always forward client certificate to endpoint
+	r.Use(ForwardClientCertMiddleware)
+
+	ver := r.PathPrefix(fmt.Sprintf("/%s", config.Version)).Subrouter()
 
 	// authEndpoint, err := url.Parse(
 	// 	fmt.Sprintf(
@@ -109,15 +114,27 @@ func main() {
 			log.Fatal(err)
 		}
 
-		log.Printf("Assigning %s service with %s endpoint to the proxy\n",
+		log.Printf("Assigning %s service (%s://%s/%s/%s) to the proxy\n",
 			service.Endpoint,
+			url.Scheme,
+			config.Version,
 			url.Host,
+			service.Endpoint,
 		)
 
 		proxy := httputil.NewSingleHostReverseProxy(url)
-		subrouter := r.PathPrefix(service.Endpoint).Subrouter()
+		subrouter := ver.PathPrefix(fmt.Sprintf("/%s", service.Endpoint)).Subrouter()
 
-		subrouter.HandleFunc("/{rest:[a-zA-Z0-9=\\-\\/]+}", func(w http.ResponseWriter, r *http.Request) {
+		subrouter.HandleFunc("", func(w http.ResponseWriter, r *http.Request) {
+			r.URL.Host = url.Host
+			r.URL.Scheme = url.Scheme
+			r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
+			r.Host = url.Host
+
+			proxy.ServeHTTP(w, r)
+		})
+
+		subrouter.HandleFunc("/{rest:.*}", func(w http.ResponseWriter, r *http.Request) {
 			r.URL.Host = url.Host
 			r.URL.Scheme = url.Scheme
 			r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
