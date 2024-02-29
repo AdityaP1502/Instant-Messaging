@@ -17,6 +17,7 @@ func PayloadCheckMiddleware(template httpx.Payload, requiredFields ...string) (M
 	var payload httpx.Payload
 
 	p := reflect.ValueOf(template)
+
 	if p.Kind() != reflect.Ptr {
 		err := fmt.Errorf("cannot create middleware. template isn't a pointer")
 		return nil, err
@@ -28,9 +29,17 @@ func PayloadCheckMiddleware(template httpx.Payload, requiredFields ...string) (M
 
 	// Check if the requiredFields is valid
 	for _, field := range requiredFields {
-		f := s.FieldByName(field)
-		if !f.IsValid() {
+		v := s.FieldByName(field)
+		if !v.IsValid() {
 			return nil, fmt.Errorf("struct of %s don't have field named %s", s.Type(), field)
+		}
+
+		f, _ := sType.FieldByName(field)
+
+		tag := f.Tag.Get("json")
+
+		if tag == "" || tag == "-" {
+			return nil, fmt.Errorf("required fields of %s have json tag of %s, which isn't valid", field, tag)
 		}
 	}
 
@@ -61,7 +70,7 @@ func PayloadCheckMiddleware(template httpx.Payload, requiredFields ...string) (M
 			err := payload.FromJSON(r.Body, true, requiredFields)
 
 			if err != nil {
-				return responseerror.CreateInternalServiceError(err)
+				return err
 			}
 
 			ctx := context.WithValue(r.Context(), PayloadKey, payload)
